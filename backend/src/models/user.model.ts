@@ -9,6 +9,7 @@ export interface IUser extends Document {
     mobile: string;
     role: UserRole;
     aadharNumber?: string;
+    googleId?: string;
     panNumber?: string;
     bankPassbook?: string;
     profileImage?: string;
@@ -22,6 +23,11 @@ const UserSchema: Schema<IUser> = new Schema(
             type: String,
             required: true,
             trim: true,
+        },
+        googleId: {
+            type: String,
+            unique: true,
+            sparse: true,
         },
 
         email: {

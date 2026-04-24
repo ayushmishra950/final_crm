@@ -1,5 +1,6 @@
 import User from "../models/user.model";
 import type { Request, Response } from "express";
+import { sendOtp } from "../service/twilio";
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
