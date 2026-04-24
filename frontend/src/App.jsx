@@ -22,15 +22,15 @@ function App() {
           <Route path="/user-auth" element={<UserAuth />} />
           <Route path="/vendor-auth" element={<VendorAuth />} />
           <Route path="/admin-login" element={<AdminAuth />} />
-          
+
           <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/user-profile" element={<UserProfile />} />
           <Route path="/provider/:id" element={<ProviderProfile />} />
           <Route path="/notifications" element={<Notifications />} />
-          
+
           <Route path="/provider-dashboard" element={<ProviderDashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
-          
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

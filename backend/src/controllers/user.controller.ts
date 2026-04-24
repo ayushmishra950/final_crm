@@ -12,3 +12,19 @@ export const registerUser = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 }
+
+
+
+export const getCurrentUser = (req: any, res: Response) => {
+    if (!req.user) {
+        return res.status(401).json({
+            success: false,
+            user: null,
+        });
+    }
+
+    return res.json({
+        success: true,
+        user: req.user,
+    });
+};

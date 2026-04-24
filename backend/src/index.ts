@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 
 import express from 'express';
 import cors from 'cors';
@@ -10,9 +9,11 @@ import http from "http";
 import passport from 'passport';
 import session from 'express-session';
 import "./service/google";
+import authRoutes from "./routes/authRoutes";
 
 const app = express();
 const port = process.env.PORT || 5000;
+
 
 app.use(cors({
   origin: process.env.FRONTEND_URL,
@@ -22,7 +23,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use(session({
-  secret: process.env.SESSION_SECRET as string,
+  secret: process.env.GOOGLE_CLIENT_SECRET!,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -35,6 +36,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.use("/api/auth", authRoutes);
 
 
 connectDB();
@@ -43,16 +45,6 @@ app.get('/', (req, res) => {
   res.send('Backend Server is Running!');
 });
 
-app.get("/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
-
-app.get("/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: `${process.env.FRONTEND_URL}/user-auth` }),
-  (req, res) => {
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
-  }
-);
 
 const server = http.createServer(app);
 
