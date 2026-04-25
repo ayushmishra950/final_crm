@@ -6,10 +6,10 @@ export const registerUser = async (req: Request, res: Response) => {
     try {
         const { fullName, email, password, mobile } = req.body;
         const user = await User.create({ fullName, email, password, mobile });
-        res.status(201).json({ success: true, data: user });
-    } catch (error) {
+        res.status(201).json({message:"User registered successfully", success: true, data: user });
+    } catch (error:any) {
         console.error("Error registering user:", error);
-        res.status(500).json({ success: false, message: "Internal server error" });
+        res.status(500).json({ message: error?.message || "Internal server error", success: false });
     }
 }
 
