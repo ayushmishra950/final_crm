@@ -4,6 +4,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import connectDB from "./config/db";
 import { initSocket } from "./service/socketHelper";
 import { Server } from "socket.io";
@@ -23,6 +24,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(cookieParser());
 
 app.use(session({
   secret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -44,19 +46,19 @@ app.use("/api/auth", authRoutes);
 
 // Google login
 app.get(
-    "/google",
-    passport.authenticate("google", { scope: ["profile", "email"] })
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
 // Google callback
 app.get(
-    "/google/callback",
-    passport.authenticate("google", {
-        failureRedirect: `${process.env.FRONTEND_URL}/user-auth`,
-    }),
-    (req, res) => {
-        res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
-    }
+  "/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: `${process.env.FRONTEND_URL}/user-auth`,
+  }),
+  (req, res) => {
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+  }
 );
 
 

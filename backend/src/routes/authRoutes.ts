@@ -1,12 +1,26 @@
 import express from "express";
-import passport from "passport";
-import { getCurrentUser, registerUser } from "../controllers/user.controller";
+import {
+    registerUser,
+    loginUser,
+    registerVendor,
+    loginVendor,
+    logoutUser,
+    refreshAccessToken,
+    getCurrentUser,
+    updateProfile
+} from "../controllers/user.controller";
 
 const router = express.Router();
 
+router.post("/register/user", registerUser);
+router.post("/login/user", loginUser);
 
-// 👇 current user API
-router.post("/register", registerUser);
+router.post("/register/vendor", registerVendor);
+router.post("/login/vendor", loginVendor);
+
+router.post("/logout", logoutUser);
+router.post("/refresh-token", refreshAccessToken);
 router.get("/me", getCurrentUser);
+router.post("/update-profile", updateProfile);
 
 export default router;

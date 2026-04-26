@@ -7,7 +7,7 @@ export default function BottomNav() {
 
   return (
     <div className="bottom-nav">
-      <Link to="/" className={`bottom-nav-item ${path === '/' ? 'active' : ''}`}>
+      <Link to="/home" className={`bottom-nav-item ${path === '/home' ? 'active' : ''}`}>
         <Home size={24} />
         <span>Home</span>
       </Link>

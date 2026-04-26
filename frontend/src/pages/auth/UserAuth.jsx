@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserCircle, Phone, KeyRound } from 'lucide-react';
-import {registerUser} from '../../service/auth';
-import { useToast } from '@/hooks/use-toast';
+import { registerUser, loginUser } from '../../service/auth';
+import { useCustomToast } from '../../components/CustomToast';
 
 export default function UserAuth() {
-  const {toast} = useToast();
+  const { addToast } = useCustomToast();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const [step, setStep] = useState('input'); // input | otp
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -17,39 +16,34 @@ export default function UserAuth() {
     mobile: '',
   });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setStep('otp');
-  };
-
-  const handleVerify = (e) => {
-    e.preventDefault();
-    navigate('/home'); 
-  };
-
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  }
-  const handleRegister = async (e) => {
+  };
+  
+  const handleAuth = async (e) => {
     e.preventDefault();
-    try{
+    try {
       setLoading(true);
-      const res = await registerUser(formData);
+      
+      let res;
+      if (isLogin) {
+          res = await loginUser({ email: formData.email, password: formData.password });
+      } else {
+          res = await registerUser(formData);
+      }
+
       console.log(res);
-      if(res.status === 201){
-        toast({
-          title: "Registration Successful",
-          description: res.data.message,
-          variant: "success",
-        });
+      if (res.status === 201 || res.status === 200) {
+        addToast(isLogin ? "Login Successful" : "Registration Successful", "Welcome to BharatSeva!", "success");
+        navigate('/user-dashboard');
       }
     }
-    catch(err){
+    catch (err) {
       console.log(err);
-      toast({title: "Registration Failed", description: err?.response?.data?.message || err?.message, variant: "destructive"});
-    }finally{
+      addToast("Authentication Failed", err.response?.data?.message || "Something went wrong.", "error");
+    } finally {
       setLoading(false);
     }
   };
@@ -66,49 +60,45 @@ export default function UserAuth() {
       <div className="section animate-fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <div style={{ width: 72, height: 72, backgroundColor: 'var(--primary-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto', color: 'var(--primary-color)' }}>
-            {step === 'input' ? <UserCircle size={36} /> : <KeyRound size={36} />}
+            {isLogin ? <KeyRound size={36} /> : <UserCircle size={36} />}
           </div>
           <h1 className="text-h1" style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>
-            {step === 'otp' ? 'Verify OTP' : (isLogin ? 'Welcome Back!' : 'Create Account')}
+            {isLogin ? 'Welcome Back!' : 'Create Account'}
           </h1>
           <p className="text-sub" style={{ fontSize: '0.9rem' }}>
-            {step === 'otp'
-              ? 'Enter the 4-digit code sent to your phone.'
-              : (isLogin ? 'Login to book services.' : 'Join BharatSeva to find local experts.')}
+            {isLogin ? 'Login to book services.' : 'Join BharatSeva to find local experts.'}
           </p>
         </div>
 
-        {step === 'input' ? (
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleAuth}>
             {!isLogin && (
               <div className="input-group">
                 <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Full Name</label>
                 <input type="text" name='fullName' onChange={handleInputChange} className="input-field" placeholder="E.g., Rahul Verma" required />
               </div>
             )}
-             {!isLogin && (
-              <div className="input-group">
-                <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Email</label>
-                <input type="email" name='email' onChange={handleInputChange} className="input-field" placeholder="E.g., rahul.verma@example.com" required />
-              </div>
-            )}
-            {!isLogin && (
-              <div className="input-group">
-                <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Password</label>
-                <input type="password" name='password' onChange={handleInputChange} className="input-field" placeholder="Enter your password" required />
-              </div>
-            )}
-
             <div className="input-group">
-              <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Mobile Number</label>
-              <div className="flex" style={{ gap: '0.5rem' }}>
-                <input type="text" className="input-field" value="+91" readOnly style={{ width: '60px', textAlign: 'center', padding: '0.75rem 0.5rem', background: 'var(--bg-color)' }} />
-                <input type="tel" name='mobile' onChange={handleInputChange} className="input-field" placeholder="10-digit number" required style={{ flex: 1 }} maxLength={10} />
-              </div>
+              <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Email</label>
+              <input type="email" name='email' onChange={handleInputChange} className="input-field" placeholder="E.g., rahul.verma@example.com" required />
+            </div>
+            
+            <div className="input-group">
+              <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Password</label>
+              <input type="password" name='password' onChange={handleInputChange} className="input-field" placeholder="Enter your password" required />
             </div>
 
-            <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '1.5rem', padding: '1rem' }} onClick={handleRegister}>
-              {isLogin ? 'Get OTP to Login' : 'Send OTP to Register'}
+            {!isLogin && (
+              <div className="input-group">
+                <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Mobile Number</label>
+                <div className="flex" style={{ gap: '0.5rem' }}>
+                  <input type="text" className="input-field" value="+91" readOnly style={{ width: '60px', textAlign: 'center', padding: '0.75rem 0.5rem', background: 'var(--bg-color)' }} />
+                  <input type="tel" name='mobile' onChange={handleInputChange} className="input-field" placeholder="10-digit number" required style={{ flex: 1 }} maxLength={10} />
+                </div>
+              </div>
+            )}
+
+            <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '1.5rem', padding: '1rem' }} disabled={loading}>
+              {loading ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0' }}>
@@ -127,30 +117,13 @@ export default function UserAuth() {
               Continue with Google
             </button>
           </form>
-        ) : (
-          <form onSubmit={handleVerify}>
-            <div className="flex justify-between" style={{ marginBottom: '2rem', gap: '1rem' }}>
-              {[1, 2, 3, 4].map(digit => (
-                <input key={digit} type="tel" className="input-field text-center" maxLength={1} style={{ fontSize: '1.5rem', padding: '1rem 0' }} required />
-              ))}
-            </div>
-            <button type="submit" className="btn btn-primary btn-block" style={{ padding: '1rem' }}>Confirm & Enter</button>
 
-            <div className="text-center" style={{ marginTop: '1.5rem' }}>
-              <span className="text-sub">Didn't receive the code? </span>
-              <span style={{ color: 'var(--primary-color)', fontWeight: 'var(--font-medium)', cursor: 'pointer' }}>Resend</span>
-            </div>
-          </form>
-        )}
-
-        {step === 'input' && (
           <div className="text-center" style={{ marginTop: '2rem' }}>
             <span className="text-sub">{isLogin ? "Don't have an account?" : 'Already have an account?'} </span>
             <span onClick={() => setIsLogin(!isLogin)} style={{ color: 'var(--primary-color)', fontWeight: '600', cursor: 'pointer', borderBottom: '1px solid var(--primary-color)' }}>
               {isLogin ? 'Register Here' : 'Login'}
             </span>
           </div>
-        )}
       </div>
 
       <div className="section text-center text-sub" style={{ fontSize: '0.75rem', opacity: 0.8 }}>

@@ -8,21 +8,8 @@ const apiClient = axios.create({
     withCredentials: true,
 });
 
-// Access token memory me store (localStorage ya state bhi use kar sakte ho)
-let accessToken: string | null = null;
+// Access token and refresh token are managed via httpOnly cookies from backend
 
-// 🔹 Set Access Token
-export const setAccessToken = (token: string) => {
-    accessToken = token;
-};
-
-// 🔹 Get Access Token
-export const getAccessToken = () => accessToken;
-
-// 🔹 Remove Token (logout ke time)
-export const clearAccessToken = () => {
-    accessToken = null;
-};
 
 // 🔁 Refresh Token API call
 const refreshToken = async () => {
@@ -33,22 +20,15 @@ const refreshToken = async () => {
             { withCredentials: true }
         );
 
-        const newAccessToken = res.data.accessToken;
-        setAccessToken(newAccessToken);
-
-        return newAccessToken;
+        return res.data.accessToken;
     } catch (err) {
-        clearAccessToken();
         throw err;
     }
 };
 
-// 📤 Request Interceptor (har request me token bhejne ke liye)
+// 📤 Request Interceptor (withCredentials automatically sends cookies)
 apiClient.interceptors.request.use(
     (config) => {
-        if (accessToken) {
-            config.headers.Authorization = `Bearer ${accessToken}`;
-        }
         return config;
     },
     (error) => Promise.reject(error)
@@ -65,14 +45,12 @@ apiClient.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
-                const newAccessToken = await refreshToken();
+                await refreshToken();
 
-                // naya token set karke retry request
-                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                // Token refreshed in cookies, retry request
                 return apiClient(originalRequest);
             } catch (refreshError) {
-                // refresh bhi fail -> logout
-                clearAccessToken();
+                // refresh fail -> logout
                 window.location.href = "/user-auth";
                 return Promise.reject(refreshError);
             }

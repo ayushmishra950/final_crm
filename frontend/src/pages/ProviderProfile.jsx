@@ -1,16 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, MapPin, CheckCircle, Phone, MessageCircle, Clock, Shield } from 'lucide-react';
 import { providers } from '../data/dummyData';
+import { useAppDispatch, useAppSelector } from '@/redux-toolkit/customHook/customHook';
+import { getCurrentUser, updateProfile } from '../service/auth';
+import { setUserData } from "@/redux-toolkit/slice/userSlice";
+
 
 export default function ProviderProfile() {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const provider = providers.find(p => p.id === parseInt(id)) || providers[0];
+  // const provider = providers.find(p => p.id === parseInt(id)) || providers[0];
 
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
   const [toast, setToast] = useState(false);
+  const dispatch = useAppDispatch();
+  const provider = useAppSelector((state) => state?.user?.userData);
 
   const handleSubmitReview = () => {
     if (rating === 0) return;
@@ -19,6 +24,27 @@ export default function ProviderProfile() {
     setReview('');
     setTimeout(() => setToast(false), 3000);
   };
+
+  const fetchUserData = async () => {
+        try {
+           const res = await getCurrentUser();
+            console.log(res);
+           if (res.status === 200) {
+              dispatch(setUserData(res.data.user));
+           }
+        } catch (error) {
+           console.log(error);
+        }
+     }
+  
+     useEffect(() => {
+        // if (!provider || Object.keys(provider).length === 0) {
+           fetchUserData();
+        // }
+     }, [provider]);
+
+
+     if (!provider) return null;
 
   return (
     <div className="page-content" style={{ paddingBottom: 0 }}>
@@ -38,7 +64,7 @@ export default function ProviderProfile() {
       <div className="section" style={{ position: 'relative', paddingTop: 0 }}>
         {/* Profile Image Overflow */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-40px', marginBottom: '1rem' }}>
-          <img src={provider.image} alt={provider.name} className="avatar-lg" style={{ border: '4px solid var(--surface-color)', boxShadow: 'var(--shadow-sm)' }} />
+          <img src={provider.profileImage} alt={provider.fullName} className="avatar-lg" style={{ border: '4px solid var(--surface-color)', boxShadow: 'var(--shadow-sm)' }} />
           <div className="flex gap-2">
             <a href={`tel:+919999999999`} className="btn-icon" style={{ background: 'var(--surface-color)', color: 'var(--text-main)', width: '40px', height: '40px' }}><Phone size={20}/></a>
             <a href={`https://wa.me/919999999999`} className="btn-icon" style={{ background: '#25D366', color: 'white', border: 'none', width: '40px', height: '40px' }}><MessageCircle size={20}/></a>
@@ -73,7 +99,7 @@ export default function ProviderProfile() {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <h3 className="text-h2" style={{ fontSize: '1rem' }}>Services Offered</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-            {provider.services.map((srv, i) => (
+            {provider?.services?.map((srv, i) => (
                <span key={i} className="badge" style={{ background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}>
                  {srv}
                </span>

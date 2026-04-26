@@ -2,28 +2,57 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Briefcase, KeyRound, CheckCircle } from 'lucide-react';
 import { categories } from '../../data/dummyData';
+import { registerVendor, loginVendor } from '../../service/auth';
+import { useCustomToast } from '../../components/CustomToast';
 
 export default function VendorAuth() {
+  const { addToast } = useCustomToast();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const [step, setStep] = useState('input'); // input | otp | success
+  const [step, setStep] = useState('input'); // input | success
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+      fullName: '',
+      email: '',
+      password: '',
+      mobile: '',
+  });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setStep('otp');
-  };
+  const handleInputChange = (e) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({ ...prev, [name]: value }));
+  }
 
-  const handleVerify = (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
-    if (isLogin) {
-       navigate('/provider-dashboard');
-    } else {
-       setStep('success');
-       setTimeout(() => {
-          navigate('/provider-dashboard');
-       }, 2000);
+    try {
+      setLoading(true);
+      
+      let res;
+      if (isLogin) {
+          res = await loginVendor({ email: formData.email, password: formData.password });
+      } else {
+          res = await registerVendor(formData);
+      }
+
+      console.log(res);
+      if (res.status === 201 || res.status === 200) {
+        addToast(isLogin ? "Login Successful" : "Registration Successful", "Welcome to BharatSeva Partner!", "success");
+        setStep('success');
+        setTimeout(() => {
+           navigate('/provider-dashboard');
+        }, 2000);
+      }
+    }
+    catch (err) {
+      console.log(err);
+      addToast("Authentication Failed", err.response?.data?.message || "Something went wrong.", "error");
+    } finally {
+      setLoading(false);
     }
   };
+
+
 
   return (
     <div className="page-content" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', padding: 0 }}>
@@ -46,46 +75,44 @@ export default function VendorAuth() {
            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
              <Briefcase size={40} color="var(--warning-color)" style={{ marginBottom: '1rem' }} />
              <h1 className="text-h1" style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>
-                {step === 'otp' ? 'Provider OTP' : (isLogin ? 'Vendor Login' : 'Register your Business')}
+                {isLogin ? 'Vendor Login' : 'Register your Business'}
              </h1>
              <p className="text-sub" style={{ fontSize: '0.9rem' }}>
-                {isLogin && step === 'input' && 'Access leads and manage your profile.'}
-                {!isLogin && step === 'input' && 'Partner with us and get daily jobs.'}
+                {isLogin ? 'Access leads and manage your profile.' : 'Partner with us and get daily jobs.'}
              </p>
            </div>
 
-           {step === 'input' ? (
-             <form onSubmit={handleSubmit}>
+           {step === 'input' && (
+             <form onSubmit={handleAuth}>
                {!isLogin && (
-                  <>
                      <div className="input-group">
                        <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Your Name</label>
-                       <input type="text" className="input-field" placeholder="Full name as per KYC" required />
+                       <input type="text" name="fullName" onChange={handleInputChange} className="input-field" placeholder="Full name as per KYC" required />
                      </div>
-                     <div className="input-group">
-                       <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Service Category</label>
-                       <select className="input-field" required>
-                          <option value="" disabled selected>Select Primary Skill</option>
-                          {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-                       </select>
-                     </div>
-                     <div className="input-group">
-                       <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Location Range (km)</label>
-                       <input type="number" className="input-field" placeholder="E.g., 5" required />
-                     </div>
-                  </>
                )}
 
                <div className="input-group">
-                 <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Registered Mobile</label>
-                 <div className="flex" style={{ gap: '0.5rem' }}>
-                   <input type="text" className="input-field" value="+91" readOnly style={{ width: '60px', textAlign: 'center', padding: '0.75rem 0.5rem', background: '#fef9c3', border: '1px solid #fde047' }} />
-                   <input type="tel" className="input-field" placeholder="10-digit number" required style={{ flex: 1, borderColor: isLogin ? 'var(--border-color)' : '#fde047' }} maxLength={10} />
-                 </div>
+                 <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Email</label>
+                 <input type="email" name="email" onChange={handleInputChange} className="input-field" placeholder="E.g., partner@example.com" required />
                </div>
 
-               <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'var(--warning-color)' }}>
-                  {isLogin ? 'Request OTP' : 'Start Earning (Register)'}
+               <div className="input-group">
+                 <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Password</label>
+                 <input type="password" name="password" onChange={handleInputChange} className="input-field" placeholder="Enter your password" required />
+               </div>
+
+               {!isLogin && (
+                 <div className="input-group">
+                   <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Registered Mobile</label>
+                   <div className="flex" style={{ gap: '0.5rem' }}>
+                     <input type="text" className="input-field" value="+91" readOnly style={{ width: '60px', textAlign: 'center', padding: '0.75rem 0.5rem', background: '#fef9c3', border: '1px solid #fde047' }} />
+                     <input type="tel" name="mobile" onChange={handleInputChange} className="input-field" placeholder="10-digit number" required style={{ flex: 1, borderColor: '#fde047' }} maxLength={10} />
+                   </div>
+                 </div>
+               )}
+
+               <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'var(--warning-color)' }} disabled={loading}>
+                  {loading ? 'Processing...' : (isLogin ? 'Login' : 'Start Earning (Register)')}
                </button>
 
                <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0' }}>
@@ -106,15 +133,6 @@ export default function VendorAuth() {
                  </svg>
                  Continue with Google
                </button>
-             </form>
-           ) : (
-             <form onSubmit={handleVerify}>
-               <div className="flex justify-between" style={{ marginBottom: '2rem', gap: '1rem' }}>
-                 {[1, 2, 3, 4].map(digit => (
-                   <input key={digit} type="tel" className="input-field text-center" maxLength={1} style={{ fontSize: '1.5rem', padding: '1rem 0' }} required />
-                 ))}
-               </div>
-               <button type="submit" className="btn btn-primary btn-block" style={{ padding: '1rem', backgroundColor: 'var(--warning-color)' }}>Verify Identity</button>
              </form>
            )}
 
