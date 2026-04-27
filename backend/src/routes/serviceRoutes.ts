@@ -5,7 +5,7 @@ import {
     updateService, 
     deleteService 
 } from "../controllers/service.controller";
-import { isAuthenticated, isVendor } from "../middlewares/auth.middleware";
+import { isAuthenticated } from "../middlewares/auth.middleware";
 
 const router = express.Router();
 
@@ -14,7 +14,6 @@ router.get("/vendor/:vendorId", getVendorServices); // You might want a differen
 
 // Protected vendor routes
 router.use(isAuthenticated);
-router.use(isVendor);
 
 router.post("/create", createService);
 router.get("/my-services", getVendorServices);

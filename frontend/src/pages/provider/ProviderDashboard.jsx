@@ -18,6 +18,7 @@ export default function ProviderDashboard() {
   const [isEditing, setIsEditing] = useState(false);
   const [showAddService, setShowAddService] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showCompletionAlert, setShowCompletionAlert] = useState(false);
   
   const [vendorUser, setVendorUser] = useState({ 
     fullName: '', 
@@ -79,7 +80,18 @@ export default function ProviderDashboard() {
     }
   };
 
+  const checkProfileCompletion = () => {
+    if (!isKycVerified || !vendorUser.category || !vendorUser.about) {
+       setShowCompletionAlert(true);
+       return false;
+    }
+    return true;
+  };
+
+  const isKycPending = !isKycVerified && (vendorUser.aadharNumber || vendorUser.panNumber || vendorUser.bankPassbook);
+
   const handleToggleOnline = async () => {
+    if (!checkProfileCompletion()) return;
     try {
         const newStatus = !isOnline;
         const res = await vendorService.updateAvailability(newStatus);
@@ -151,6 +163,7 @@ export default function ProviderDashboard() {
   };
 
   const handleUpdateBooking = async (id, status) => {
+    if (!checkProfileCompletion()) return;
     try {
         const res = await vendorService.updateBookingStatus(id, status);
         if (res.success) {
@@ -172,9 +185,28 @@ export default function ProviderDashboard() {
   return (
     <div className="provider-app" style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f1f5f9' }}>
 
+      {showCompletionAlert && (
+         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative', textAlign: 'center' }}>
+               <button onClick={() => setShowCompletionAlert(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24}/></button>
+               <div style={{ width: '64px', height: '64px', background: '#fef3c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706', margin: '0 auto 1.5rem auto' }}>
+                  <ShieldAlert size={32}/>
+               </div>
+               <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.75rem' }}>Action Required</h2>
+               <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                  To unlock all partner features, ensure quality service, and build trust with customers, please complete your business profile and KYC verification.
+               </p>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <button onClick={() => { setShowCompletionAlert(false); setActiveTab('profile'); }} style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>Complete Profile Now</button>
+                  <button onClick={() => setShowCompletionAlert(false)} style={{ width: '100%', background: '#f1f5f9', color: '#64748b', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>Maybe Later</button>
+               </div>
+            </div>
+         </div>
+      )}
+
       {isEditing && (
          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+            <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
                <button onClick={() => setIsEditing(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24}/></button>
                <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Edit Profile</h2>
 
@@ -203,7 +235,7 @@ export default function ProviderDashboard() {
 
       {showAddService && (
          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '500px', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+            <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
                <button onClick={() => setShowAddService(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24}/></button>
                <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Add New Service</h2>
 
@@ -227,6 +259,31 @@ export default function ProviderDashboard() {
                      <textarea className="input-field" value={newService.description} onChange={(e) => setNewService({...newService, description: e.target.value})} placeholder="Tell customers what's included..." style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '80px' }} required />
                   </div>
                   <button type="submit" style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>Create Service</button>
+               </form>
+            </div>
+         </div>
+      )}
+
+      {showKycForm && (
+         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+               <button onClick={() => setShowKycForm(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24}/></button>
+               <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Complete KYC</h2>
+
+               <form onSubmit={handleSubmitKyc}>
+                  <div className="input-group" style={{ marginBottom: '1rem' }}>
+                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>PAN Number</label>
+                     <input type="text" name="panNumber" className="input-field" placeholder="ABCDE1234F" style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', textTransform: 'uppercase' }} required />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: '1rem' }}>
+                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Aadhar Number</label>
+                     <input type="text" name="aadharNumber" className="input-field" placeholder="1234 5678 9012" style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Bank Passbook / Account No</label>
+                     <input type="text" name="bankPassbook" className="input-field" placeholder="Enter bank details..." style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                  </div>
+                  <button type="submit" style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>Submit Documents</button>
                </form>
             </div>
          </div>
@@ -310,7 +367,7 @@ export default function ProviderDashboard() {
 
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '2rem 0 1rem 0' }}>
                   <h3 style={{ fontSize: '1.125rem', margin: 0, color: '#1e293b' }}>My Services</h3>
-                  <button onClick={() => setShowAddService(true)} style={{ background: '#4f46e5', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <button onClick={() => { if(checkProfileCompletion()) setShowAddService(true); }} style={{ background: '#4f46e5', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                      <Plus size={16}/> Add New
                   </button>
                </div>
@@ -418,6 +475,8 @@ export default function ProviderDashboard() {
                   </div>
                   {isKycVerified ? (
                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', color: '#10b981', fontSize: '0.875rem', fontWeight: 500 }}><ShieldCheck size={16}/> KYC Fully Verified</div>
+                  ) : isKycPending ? (
+                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', color: '#f59e0b', fontSize: '0.875rem', fontWeight: 500, background: '#fef3c7', padding: '0.4rem 1rem', borderRadius: '8px', border: '1px solid #fde68a' }}><Clock size={16}/> KYC Pending Approval</div>
                   ) : (
                      <button onClick={() => setShowKycForm(true)} style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                         <ShieldAlert size={16}/> Complete KYC Now

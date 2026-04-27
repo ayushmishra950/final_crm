@@ -186,10 +186,10 @@ export const getHomeData = async (req: AuthRequest, res: Response) => {
             .sort({ date: -1 });
 
         // Categories (Get unique categories from vendors)
-        const categories = await User.distinct("category", { role: "vendor", category: { $ne: null } });
+        const categories = await User.distinct("category", { role: "vendor", category: { $ne: null }, isKycVerified: true });
 
         // Top Rated Providers
-        const topRatedProviders = await User.find({ role: "vendor" })
+        const topRatedProviders = await User.find({ role: "vendor", isKycVerified: true })
             .select("fullName businessName category rating profileImage about")
             .sort({ rating: -1 })
             .limit(6);
@@ -211,7 +211,7 @@ export const getExploreProviders = async (req: AuthRequest, res: Response) => {
     try {
         const { category, search, sortBy } = req.query;
 
-        let query: any = { role: "vendor" };
+        let query: any = { role: "vendor", isKycVerified: true };
 
         if (category && category !== "All") {
             query.category = category;

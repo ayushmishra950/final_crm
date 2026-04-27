@@ -5,12 +5,11 @@ import {
     updateAvailability, 
     submitKyc 
 } from "../controllers/vendor.controller";
-import { isAuthenticated, isVendor } from "../middlewares/auth.middleware";
+import { isAuthenticated } from "../middlewares/auth.middleware";
 
 const router = express.Router();
 
 router.use(isAuthenticated);
-router.use(isVendor);
 
 router.get("/dashboard", getVendorDashboardData);
 router.post("/profile/update", updateVendorProfile);

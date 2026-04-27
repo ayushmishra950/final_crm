@@ -17,6 +17,7 @@ import vendorRoutes from "./routes/vendorRoutes";
 import serviceRoutes from "./routes/serviceRoutes";
 import bookingRoutes from "./routes/bookingRoutes";
 import userDashboardRoutes from "./routes/userDashboardRoutes";
+import adminRoutes from "./routes/adminRoutes";
 
 const app = express();
 const port = process.env.PORT;
@@ -49,6 +50,7 @@ app.use("/api/vendor", vendorRoutes);
 app.use("/api/service", serviceRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/user-dashboard", userDashboardRoutes);
+app.use("/api/admin", adminRoutes);
 
 
 

@@ -35,9 +35,10 @@ export const registerUser = async (req: Request, res: Response) => {
 export const loginUser = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
+        console.log(email, password);
 
         const user = await User.findOne({ email, role: "user" });
-
+        console.log("user", user);
         if (!user) {
             return res.status(404).json({ message: "User not found", success: false });
         }

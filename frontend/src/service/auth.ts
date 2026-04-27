@@ -8,8 +8,8 @@ export const getCurrentUser = async () => {
 export const registerUser = async (obj: any) => {
     const res = await api.post("/auth/register/user", obj);
     return res;
-};
-
+}; 
+ 
 export const loginUser = async (obj: any) => {
     const res = await api.post("/auth/login/user", obj);
     return res;
