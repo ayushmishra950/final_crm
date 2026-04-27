@@ -24,7 +24,8 @@ export const generateAccessAndRefreshTokens = async (userId: string) => {
         await user.save({ validateBeforeSave: false });
 
         return { accessToken, refreshToken };
-    } catch (error) {
-        throw new Error("Something went wrong while generating tokens");
+    } catch (error: any) {
+        console.error("Detailed token error:", error);
+        throw new Error(`Something went wrong while generating tokens: ${error?.message || error}`);
     }
 };

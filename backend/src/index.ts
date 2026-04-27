@@ -13,6 +13,10 @@ import passport from 'passport';
 import session from 'express-session';
 import "./service/google";
 import authRoutes from "./routes/authRoutes";
+import vendorRoutes from "./routes/vendorRoutes";
+import serviceRoutes from "./routes/serviceRoutes";
+import bookingRoutes from "./routes/bookingRoutes";
+import userDashboardRoutes from "./routes/userDashboardRoutes";
 
 const app = express();
 const port = process.env.PORT;
@@ -41,6 +45,10 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/vendor", vendorRoutes);
+app.use("/api/service", serviceRoutes);
+app.use("/api/booking", bookingRoutes);
+app.use("/api/user-dashboard", userDashboardRoutes);
 
 
 

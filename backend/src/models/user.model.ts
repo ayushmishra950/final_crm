@@ -17,6 +17,21 @@ export interface IUser extends Document {
     profileImage?: string;
     refreshToken?: string;
     address: string;
+    businessName?: string;
+    category?: string;
+    operatingRadius?: number;
+    about?: string;
+    isOnline?: boolean;
+    isKycVerified?: boolean;
+    favorites?: mongoose.Types.ObjectId[];
+    notificationPreferences?: {
+        email: boolean;
+        push: boolean;
+        sms: boolean;
+    };
+    rating?: number;
+    reviewsCount?: number;
+    services?: string[];
     createdAt: Date;
     updatedAt: Date;
     comparePassword(password: string): Promise<boolean>;
@@ -82,6 +97,57 @@ const UserSchema: Schema<IUser> = new Schema(
         refreshToken: {
             type: String,
         },
+
+        businessName: {
+            type: String,
+        },
+
+        category: {
+            type: String,
+        },
+
+        operatingRadius: {
+            type: Number,
+            default: 10,
+        },
+
+        about: {
+            type: String,
+        },
+
+        isOnline: {
+            type: Boolean,
+            default: true,
+        },
+
+        isKycVerified: {
+            type: Boolean,
+            default: false,
+        },
+        favorites: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "User",
+            },
+        ],
+        notificationPreferences: {
+            email: { type: Boolean, default: true },
+            push: { type: Boolean, default: true },
+            sms: { type: Boolean, default: false },
+        },
+        rating: {
+            type: Number,
+            default: 4.5,
+        },
+        reviewsCount: {
+            type: Number,
+            default: 0,
+        },
+        services: [
+            {
+                type: String,
+            },
+        ],
     },
     {
         timestamps: true,

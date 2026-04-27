@@ -10,6 +10,7 @@ passport.use(new GoogleStrategy({
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     callbackURL: "/auth/google/callback"
 },
+
     async (accessToken, refreshToken, profile, done) => {
         try {
             const email = profile.emails?.[0]?.value;

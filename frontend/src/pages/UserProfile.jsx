@@ -2,15 +2,33 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Edit3, MapPin, CreditCard, HelpCircle, FileText, LogOut, ChevronRight, Wallet, CheckCircle, Clock, Briefcase, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
-import { bookingHistory } from '../data/dummyData';
-import { getCurrentUser, updateProfile } from '../service/auth';
+import { updateProfile } from '../service/auth';
 import { setUserData } from "@/redux-toolkit/slice/userSlice";
 import { useAppDispatch, useAppSelector } from '@/redux-toolkit/customHook/customHook';
+import * as userService from '../service/userService';
+import { Bell, Heart, Settings, Shield, IndianRupee, History } from 'lucide-react';
 
 export default function UserProfile() {
    const navigate = useNavigate();
    const [isEditing, setIsEditing] = useState(false);
    const [editFormData, setEditFormData] = useState({});
+   const [showHistory, setShowHistory] = useState(false);
+   const [showPayments, setShowPayments] = useState(false);
+   const [showFavorites, setShowFavorites] = useState(false);
+   const [showSettings, setShowSettings] = useState(false);
+   const [showPasswordModal, setShowPasswordModal] = useState(false);
+   const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '' });
+
+   const [dashboardData, setDashboardData] = useState({
+      stats: { totalBookings: 0, pendingBookings: 0, completedBookings: 0 },
+      recentBookings: [],
+      notifications: []
+   });
+   const [fullHistory, setFullHistory] = useState([]);
+   const [payments, setPayments] = useState([]);
+   const [favorites, setFavorites] = useState([]);
+   const [loading, setLoading] = useState(true);
+
    const dispatch = useAppDispatch();
    const user = useAppSelector((state) => state?.user?.userData);
 
@@ -28,23 +46,59 @@ export default function UserProfile() {
       }
    }
 
-   const fetchUserData = async () => {
+   const fetchInitialData = async () => {
       try {
-         const res = await getCurrentUser();
-         if (res.status === 200) {
+         setLoading(true);
+         const res = await userService.getDashboardData();
+         if (res.success) {
+            setDashboardData(res.data);
             dispatch(setUserData(res.data.user));
          }
-
       } catch (error) {
          console.log(error);
+      } finally {
+         setLoading(false);
+      }
+   }
+
+   const fetchHistory = async () => {
+      try {
+         const res = await userService.getBookingHistory();
+         if (res.success) setFullHistory(res.bookings);
+      } catch (error) { console.log(error); }
+   }
+
+   const fetchPayments = async () => {
+      try {
+         const res = await userService.getPaymentHistory();
+         if (res.success) setPayments(res.payments);
+      } catch (error) { console.log(error); }
+   }
+
+   const fetchFavorites = async () => {
+      try {
+         const res = await userService.getFavorites();
+         if (res.success) setFavorites(res.favorites);
+      } catch (error) { console.log(error); }
+   }
+
+   const handleChangePassword = async (e) => {
+      e.preventDefault();
+      try {
+         const res = await userService.changePassword(passwordData);
+         if (res.success) {
+            setShowPasswordModal(false);
+            setPasswordData({ oldPassword: '', newPassword: '' });
+            alert("Password changed successfully!");
+         }
+      } catch (error) {
+         alert(error.message || "Failed to change password");
       }
    }
 
    useEffect(() => {
-      if (!user || Object.keys(user).length === 0) {
-         fetchUserData();
-      }
-   }, [user]);
+      fetchInitialData();
+   }, []);
 
    return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f8fafc' }}>
@@ -123,56 +177,73 @@ export default function UserProfile() {
                {/* Recent Bookings */}
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={{ fontSize: '1.125rem', margin: 0, fontWeight: 600, color: '#1e293b' }}>Recent Bookings</h3>
-                  <span style={{ fontSize: '0.875rem', color: '#4f46e5', fontWeight: 600, cursor: 'pointer' }}>View All</span>
+                  <span onClick={() => { fetchHistory(); setShowHistory(true); }} style={{ fontSize: '0.875rem', color: '#4f46e5', fontWeight: 600, cursor: 'pointer' }}>View All</span>
                </div>
                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                  {bookingHistory.slice(0, 2).map((booking, idx) => (
-                     <div key={idx} style={{ background: 'white', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: booking.status === 'Completed' ? '4px solid #10b981' : '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                           <div>
-                              <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '1rem' }}>{booking.providerName}</div>
-                              <div style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '2px' }}>{booking.category}</div>
-                           </div>
-                           <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: booking.status === 'Completed' ? '#10b981' : '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                 {booking.status === 'Completed' ? <CheckCircle size={14} /> : <Clock size={14} />} {booking.status}
+                  {dashboardData.recentBookings.length === 0 ? (
+                     <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', background: 'white', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>No recent bookings found.</div>
+                  ) : (
+                     dashboardData.recentBookings.slice(0, 3).map((booking, idx) => (
+                        <div key={idx} style={{ background: 'white', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0', borderLeft: booking.status === 'completed' ? '4px solid #10b981' : '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                 <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '1rem' }}>{booking.vendorId?.businessName || booking.vendorId?.fullName}</div>
+                                 <div style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '2px' }}>{booking.serviceId?.name}</div>
                               </div>
-                              <div style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginTop: '2px' }}>{booking.amount}</div>
+                              <div style={{ textAlign: 'right' }}>
+                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: booking.status === 'completed' ? '#10b981' : '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {booking.status === 'completed' ? <CheckCircle size={14} /> : <Clock size={14} />} {booking.status}
+                                 </div>
+                                 <div style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginTop: '2px' }}>₹{booking.totalAmount}</div>
+                              </div>
+                           </div>
+                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #e2e8f0', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+                              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Booked on {new Date(booking.date).toLocaleDateString()}</span>
+                              {booking.status === 'completed' ? (
+                                 <button onClick={() => navigate(`/service/${booking.serviceId?._id}`)} style={{ background: '#f1f5f9', color: '#4f46e5', border: '1px solid #e2e8f0', padding: '0.4rem 1rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>Rebook</button>
+                              ) : (
+                                 <button style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', padding: '0.4rem 1rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>Track Partner</button>
+                              )}
                            </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #e2e8f0', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
-                           <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Booked on {booking.date}</span>
-                           {booking.status === 'Completed' ? (
-                              <button style={{ background: '#f1f5f9', color: '#4f46e5', border: '1px solid #e2e8f0', padding: '0.4rem 1rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>Rebook</button>
-                           ) : (
-                              <button style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', padding: '0.4rem 1rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>Track Partner</button>
-                           )}
-                        </div>
-                     </div>
-                  ))}
+                     ))
+                  )}
                </div>
 
-               {/* Account Settings Menu */}
-               <h3 style={{ fontSize: '1.125rem', margin: '0 0 1rem 0', fontWeight: 600, color: '#1e293b' }}>Settings & Legal</h3>
+               <h3 style={{ fontSize: '1.125rem', margin: '0 0 1rem 0', fontWeight: 600, color: '#1e293b' }}>Account & Settings</h3>
                <div className="animate-fade-in" style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '2rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
+                  <div onClick={() => { fetchHistory(); setShowHistory(true); }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#334155', fontWeight: 500 }}>
-                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><MapPin size={18} /></div>
-                        Manage Addresses
+                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><History size={18} /></div>
+                        Booking History
                      </div>
                      <ChevronRight size={18} color="#cbd5e1" />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
+                  <div onClick={() => { fetchPayments(); setShowPayments(true); }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#334155', fontWeight: 500 }}>
-                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><CreditCard size={18} /></div>
-                        Payment Methods
+                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><IndianRupee size={18} /></div>
+                        Payment History
                      </div>
                      <ChevronRight size={18} color="#cbd5e1" />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
+                  <div onClick={() => { fetchFavorites(); setShowFavorites(true); }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#334155', fontWeight: 500 }}>
-                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><FileText size={18} /></div>
-                        Terms & Privacy Policy
+                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><Heart size={18} /></div>
+                        My Favorites
+                     </div>
+                     <ChevronRight size={18} color="#cbd5e1" />
+                  </div>
+                  <div onClick={() => setShowPasswordModal(true)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#334155', fontWeight: 500 }}>
+                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><Shield size={18} /></div>
+                        Security & Password
+                     </div>
+                     <ChevronRight size={18} color="#cbd5e1" />
+                  </div>
+                  <div onClick={() => setShowSettings(true)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#334155', fontWeight: 500 }}>
+                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><Settings size={18} /></div>
+                        Notification Preferences
                      </div>
                      <ChevronRight size={18} color="#cbd5e1" />
                   </div>
@@ -191,7 +262,107 @@ export default function UserProfile() {
 
             </div>
          </div>
+
          <BottomNav />
+
+         {/* Modals for different sections */}
+         {showHistory && (
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+               <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+                  <button onClick={() => setShowHistory(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Booking History</h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                     {fullHistory.length === 0 ? <p style={{ textAlign: 'center', color: '#94a3b8' }}>No bookings found.</p> : fullHistory.map((booking, idx) => (
+                        <div key={idx} style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+                           <div style={{ fontWeight: 600 }}>{booking.vendorId?.businessName || booking.vendorId?.fullName}</div>
+                           <div style={{ fontSize: '0.875rem', color: '#64748b' }}>{booking.serviceId?.name} • ₹{booking.totalAmount}</div>
+                           <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>{new Date(booking.date).toLocaleDateString()} • {booking.status}</div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {showPayments && (
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+               <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+                  <button onClick={() => setShowPayments(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Payment History</h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                     {payments.length === 0 ? <p style={{ textAlign: 'center', color: '#94a3b8' }}>No payment records found.</p> : payments.map((payment, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+                           <div>
+                              <div style={{ fontWeight: 500 }}>{payment.serviceId?.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>To: {payment.vendorId?.businessName}</div>
+                           </div>
+                           <div style={{ fontWeight: 600, color: '#10b981' }}>₹{payment.totalAmount}</div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {showFavorites && (
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+               <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+                  <button onClick={() => setShowFavorites(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>My Favorites</h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                     {favorites.length === 0 ? <p style={{ textAlign: 'center', color: '#94a3b8' }}>No favorites added yet.</p> : favorites.map((fav, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+                           <img src={fav.profileImage} style={{ width: '50px', height: '50px', borderRadius: '50%' }} />
+                           <div>
+                              <div style={{ fontWeight: 600 }}>{fav.businessName || fav.fullName}</div>
+                              <div style={{ fontSize: '0.875rem', color: '#64748b' }}>{fav.category}</div>
+                           </div>
+                           <button onClick={() => navigate(`/provider/${fav._id}`)} style={{ marginLeft: 'auto', background: '#4f46e5', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.75rem' }}>View</button>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {showPasswordModal && (
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+               <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+                  <button onClick={() => setShowPasswordModal(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Change Password</h2>
+                  <form onSubmit={handleChangePassword}>
+                     <div className="input-group" style={{ marginBottom: '1rem' }}>
+                        <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Old Password</label>
+                        <input type="password" name="oldPassword" value={passwordData.oldPassword} onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                     </div>
+                     <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>New Password</label>
+                        <input type="password" name="newPassword" value={passwordData.newPassword} onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                     </div>
+                     <button type="submit" style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: 600 }}>Update Password</button>
+                  </form>
+               </div>
+            </div>
+         )}
+
+         {showSettings && (
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+               <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+                  <button onClick={() => setShowSettings(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Notifications</h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                     {['Email Notifications', 'Push Notifications', 'SMS Updates'].map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                           <span style={{ color: '#334155' }}>{item}</span>
+                           <div style={{ width: '40px', height: '22px', background: '#10b981', borderRadius: '20px', position: 'relative', cursor: 'pointer' }}>
+                              <div style={{ position: 'absolute', top: '2px', left: '20px', width: '18px', height: '18px', background: 'white', borderRadius: '50%' }}></div>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+         )}
       </div>
    );
 }
