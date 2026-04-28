@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Briefcase, ShieldCheck, Star, Shield, Zap, Wrench, CheckCircle, Droplets, Sparkles, Scissors, Paintbrush, Wind, Clock } from 'lucide-react';
 import { getCategories } from '../service/categoryService';
+import { useNavigate } from 'react-router-dom';
 
 export default function Landing() {
   const navigate = useNavigate();
