@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model";
+import Admin from "../models/admin.model";
 
 export interface AuthRequest extends Request {
     user?: any;
@@ -15,7 +16,11 @@ export const isAuthenticated = async (req: AuthRequest, res: Response, next: Nex
         }
 
         const decoded: any = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string);
-        const user = await User.findById(decoded?._id).select("-password -refreshToken");
+        let user = await User.findById(decoded?._id).select("-password -refreshToken");
+        
+        if (!user) {
+            user = await Admin.findById(decoded?._id).select("-password");
+        }
 
         if (!user) {
             return res.status(401).json({ success: false, message: "Unauthorized: User not found" });

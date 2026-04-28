@@ -40,8 +40,9 @@ apiClient.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // agar access token expire ho gaya
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Do not intercept 401 for login routes
+        const isLoginRoute = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/admin/login');
+        if (error.response?.status === 401 && !originalRequest._retry && !isLoginRoute) {
             originalRequest._retry = true;
 
             try {
@@ -51,7 +52,11 @@ apiClient.interceptors.response.use(
                 return apiClient(originalRequest);
             } catch (refreshError) {
                 // refresh fail -> logout
-                window.location.href = "/user-auth";
+                if (window.location.pathname.includes('/admin')) {
+                    window.location.href = "/admin-login";
+                } else {
+                    window.location.href = "/user-auth";
+                }
                 return Promise.reject(refreshError);
             }
         }

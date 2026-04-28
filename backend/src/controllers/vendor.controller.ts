@@ -106,10 +106,15 @@ export const submitKyc = async (req: AuthRequest, res: Response) => {
                 panNumber,
                 aadharNumber,
                 bankPassbook,
-                isKycVerified: false // Set to false initially, admin should verify
+                isKycVerified: false, // Set to false initially, admin should verify
+                role: "vendor" // Upgrade role to vendor
             },
             { new: true }
         );
+
+        const { getIO } = require("../service/socketHelper");
+        const io = getIO();
+        io.emit("admin_update", { message: "A vendor has submitted KYC" });
 
         res.status(200).json({
             success: true,

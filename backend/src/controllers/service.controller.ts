@@ -16,6 +16,10 @@ export const createService = async (req: AuthRequest, res: Response) => {
             images
         });
 
+        const { getIO } = require("../service/socketHelper");
+        getIO().emit("vendor_update", { message: "Service created" });
+        getIO().emit("admin_update", { message: "Service created" });
+
         res.status(201).json({
             success: true,
             message: "Service created successfully",
@@ -56,6 +60,10 @@ export const updateService = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ success: false, message: "Service not found or unauthorized" });
         }
 
+        const { getIO } = require("../service/socketHelper");
+        getIO().emit("vendor_update", { message: "Service updated" });
+        getIO().emit("admin_update", { message: "Service updated" });
+
         res.status(200).json({
             success: true,
             message: "Service updated successfully",
@@ -76,6 +84,10 @@ export const deleteService = async (req: AuthRequest, res: Response) => {
         if (!service) {
             return res.status(404).json({ success: false, message: "Service not found or unauthorized" });
         }
+
+        const { getIO } = require("../service/socketHelper");
+        getIO().emit("vendor_update", { message: "Service deleted" });
+        getIO().emit("admin_update", { message: "Service deleted" });
 
         res.status(200).json({
             success: true,

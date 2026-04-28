@@ -9,7 +9,7 @@ import * as vendorService from '../../service/vendorService';
 import * as serviceManagement from '../../service/serviceManagement';
 import { useDispatch, useSelector } from 'react-redux';
 import { setVendorUser, setVendorDashboard, setMyServices } from '../../redux-toolkit/slice/vendorSlice';
-import { connectSocket } from '../../socket/socket';
+import { connectSocket, socket } from '../../socket/socket';
 import { getCategories } from '../../service/categoryService';
 
 export default function ProviderDashboard() {
@@ -39,6 +39,15 @@ export default function ProviderDashboard() {
 
   useEffect(() => {
     fetchInitialData();
+
+    socket.on('vendor_update', () => {
+      console.log("Socket: Vendor update received, refreshing data...");
+      fetchInitialData();
+    });
+
+    return () => {
+      socket.off('vendor_update');
+    };
   }, []);
 
   const fetchInitialData = async () => {
@@ -412,7 +421,7 @@ export default function ProviderDashboard() {
                      {newBookings.map(lead => (
                         <div key={lead._id} style={{ background: 'white', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                              <span style={{ fontWeight: 600, fontSize: '1.125rem', color: '#1e293b' }}>{lead.serviceId?.name}</span>
+                              <span style={{ fontWeight: 600, fontSize: '1.125rem', color: '#1e293b' }}>{lead.serviceId?.name || 'General Service Request'}</span>
                               <span style={{ fontWeight: 600, color: '#f59e0b' }}>Est. ₹{lead.totalAmount}</span>
                            </div>
 
@@ -452,7 +461,7 @@ export default function ProviderDashboard() {
                               <div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}><IndianRupee size={18}/></div>
                               <div>
                                  <div style={{ fontWeight: 500, color: '#1e293b' }}>Payment from {job.userId?.fullName}</div>
-                                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{job.serviceId?.name}</div>
+                                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{job.serviceId?.name || 'General Service Request'}</div>
                               </div>
                            </div>
                            <div style={{ fontWeight: 600, color: '#10b981' }}>+₹{job.totalAmount}</div>

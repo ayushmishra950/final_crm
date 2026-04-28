@@ -15,18 +15,30 @@ export const getAdminDashboardData = async (req: Request, res: Response) => {
         const completedBookings = await Booking.find({ status: "completed" });
         const revenue = completedBookings.reduce((acc, curr) => acc + curr.totalAmount, 0);
 
-        // Fetch users
-        const users = await User.find({ role: "user" })
+        // Fetch providers (anyone with role "vendor" OR anyone who has submitted KYC data)
+        const providers = await User.find({
+            $or: [
+                { role: "vendor" },
+                { aadharNumber: { $exists: true, $ne: "" } },
+                { panNumber: { $exists: true, $ne: "" } },
+                { bankPassbook: { $exists: true, $ne: "" } }
+            ]
+        })
+            .select("-password -refreshToken")
+            .sort({ createdAt: -1 });
+
+        // Fetch users (only those who are role "user" AND have NO KYC data submitted)
+        const users = await User.find({
+            role: "user",
+            aadharNumber: { $exists: false },
+            panNumber: { $exists: false },
+            bankPassbook: { $exists: false }
+        })
             .select("-password -refreshToken")
             .sort({ createdAt: -1 })
             .limit(50);
 
-        // Fetch providers
-        const providers = await User.find({ role: "vendor" })
-            .select("-password -refreshToken")
-            .sort({ createdAt: -1 });
-
-        // Pending KYC providers
+        // Pending KYC providers (those who are not verified yet)
         const pendingKycProviders = providers.filter(p => !p.isKycVerified && (p.aadharNumber || p.panNumber || p.bankPassbook));
 
         const reviews = await Review.find().populate("userId", "fullName").populate("vendorId", "businessName fullName").sort({ createdAt: -1 }).limit(20);
@@ -60,6 +72,11 @@ export const verifyVendorKyc = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: "Vendor not found" });
         }
 
+        const { getIO } = require("../service/socketHelper");
+        const io = getIO();
+        io.emit("admin_update", { message: "Vendor KYC verified" });
+        io.emit("vendor_update", { message: "Your KYC has been verified" });
+
         res.status(200).json({ success: true, message: "Vendor KYC verified successfully", vendor });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -70,6 +87,12 @@ export const deleteUserOrVendor = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         await User.findByIdAndDelete(id);
+
+        const { getIO } = require("../service/socketHelper");
+        const io = getIO();
+        io.emit("admin_update", { message: "User or Vendor deleted" });
+        io.emit("user_update", { message: "User deleted" });
+
         res.status(200).json({ success: true, message: "User/Vendor removed successfully" });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -84,7 +107,7 @@ export const deleteUserOrVendor = async (req: Request, res: Response) => {
 
 // 🔐 Generate JWT
 const generateToken = (id: string) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET as string, {
+    return jwt.sign({ _id: id }, process.env.ACCESS_TOKEN_SECRET as string, {
         expiresIn: "7d",
     });
 };
@@ -119,7 +142,6 @@ export const registerAdmin = async (req: Request, res: Response) => {
                 name: admin.name,
                 email: admin.email,
                 phone: admin.phone,
-                token: generateToken(admin._id.toString()),
             },
         });
     } catch (error: any) {
@@ -137,12 +159,7 @@ export const loginAdmin = async (req: Request, res: Response) => {
         const { email, password } = req.body;
 
         const admin = await Admin.findOne({ email });
-        if (!admin) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid email or password",
-            });
-        }
+        if (!admin) { return res.status(400).json({ success: false, message: "Invalid email or password" }); }
 
         const isMatch = await admin.comparePassword(password);
         if (!isMatch) {
@@ -152,17 +169,27 @@ export const loginAdmin = async (req: Request, res: Response) => {
             });
         }
 
-        return res.status(200).json({
-            success: true,
-            message: "Login successful",
-            data: {
-                _id: admin._id,
-                name: admin.name,
-                email: admin.email,
-                phone: admin.phone,
-                token: generateToken(admin._id.toString()),
-            },
-        });
+        const token = generateToken(admin._id.toString());
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict" as const,
+        };
+
+        return res.status(200)
+            .cookie("accessToken", token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 })
+            .json({
+                success: true,
+                message: "Login successful",
+                data: {
+                    _id: admin._id,
+                    name: admin.name,
+                    email: admin.email,
+                    phone: admin.phone,
+                    token,
+                },
+            });
     } catch (error: any) {
         return res.status(500).json({
             success: false,
@@ -177,16 +204,9 @@ export const getAdmins = async (_req: Request, res: Response) => {
     try {
         const admins = await Admin.find().select("-password");
 
-        return res.status(200).json({
-            success: true,
-            count: admins.length,
-            data: admins,
-        });
+        return res.status(200).json({ success: true, count: admins.length, data: admins });
     } catch (error: any) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 

@@ -73,7 +73,6 @@ app.get(
   }
 );
 
-
 connectDB();
 
 app.get('/', (req, res) => {

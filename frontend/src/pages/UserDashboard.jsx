@@ -5,6 +5,7 @@ import ProviderCard from '../components/ProviderCard';
 import BottomNav from '../components/BottomNav';
 import { getExploreProviders } from '../service/userService';
 import { getCategories } from '../service/categoryService';
+import { socket } from '../socket/socket';
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -21,6 +22,15 @@ export default function UserDashboard() {
     if (categories.length === 0) {
       fetchCategories();
     }
+
+    socket.on('user_update', () => {
+      console.log("Socket: User update received, refreshing data...");
+      fetchProviders();
+    });
+
+    return () => {
+      socket.off('user_update');
+    };
   }, [activeFilter, sortBy]);
 
   // Debounced search
@@ -132,6 +142,7 @@ export default function UserDashboard() {
                      rating: provider.rating,
                      reviewsCount: provider.reviewsCount || 10,
                      profileImage: provider.profileImage,
+                     verified: provider.isKycVerified,
                      distance: "1.2 km"
                   }} />
                ))}

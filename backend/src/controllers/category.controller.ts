@@ -14,6 +14,10 @@ export const createCategory = async (req: Request, res: Response) => {
 
         const category = await Category.create({ name, image, description });
         console.log("Category created successfully:", category);
+
+        const { getIO } = require("../service/socketHelper");
+        getIO().emit("admin_update", { message: "Category created" });
+
         res.status(201).json({ success: true, data: category });
     } catch (error: any) {
         console.error("Error in createCategory:", error);
@@ -45,6 +49,9 @@ export const updateCategory = async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, message: "Category not found" });
         }
 
+        const { getIO } = require("../service/socketHelper");
+        getIO().emit("admin_update", { message: "Category updated" });
+
         res.status(200).json({ success: true, data: category });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -59,6 +66,9 @@ export const deleteCategory = async (req: Request, res: Response) => {
         if (!category) {
             return res.status(404).json({ success: false, message: "Category not found" });
         }
+
+        const { getIO } = require("../service/socketHelper");
+        getIO().emit("admin_update", { message: "Category deleted" });
 
         res.status(200).json({ success: true, message: "Category deleted successfully" });
     } catch (error: any) {

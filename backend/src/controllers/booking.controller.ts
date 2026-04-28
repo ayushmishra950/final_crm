@@ -42,6 +42,10 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ success: false, message: "Booking not found or unauthorized" });
         }
 
+        const { getIO } = require("../service/socketHelper");
+        getIO().emit("user_update", { message: "Booking status updated" });
+        getIO().emit("vendor_update", { message: "Booking status updated" });
+
         res.status(200).json({
             success: true,
             message: `Booking ${status} successfully`,
@@ -72,6 +76,8 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         try {
             const io = getIO();
             io.emit(`new_booking_${vendorId}`, newBooking);
+            io.emit("vendor_update", { message: "New booking received" });
+            io.emit("user_update", { message: "Booking created" });
         } catch (socketErr) {
             console.error("Socket emission failed:", socketErr);
         }

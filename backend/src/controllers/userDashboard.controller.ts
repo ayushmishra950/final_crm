@@ -189,8 +189,8 @@ export const getHomeData = async (req: AuthRequest, res: Response) => {
         // Categories (Get from Category model)
         const categories = await Category.find().sort({ name: 1 });
 
-        // Top Rated Providers
-        const topRatedProviders = await User.find({ role: "vendor", isKycVerified: true })
+        // Top Rated Providers (Show all verified vendors, regardless of category)
+        const topRatedProviders = await User.find({ isKycVerified: true })
             .select("fullName businessName category rating profileImage about")
             .sort({ rating: -1 })
             .limit(6);
@@ -212,7 +212,7 @@ export const getExploreProviders = async (req: AuthRequest, res: Response) => {
     try {
         const { category, search, sortBy } = req.query;
 
-        let query: any = { role: "vendor", isKycVerified: true };
+        let query: any = { isKycVerified: true };
 
         if (category && category !== "All") {
             query.category = category;

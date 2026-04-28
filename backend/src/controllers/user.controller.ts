@@ -37,7 +37,7 @@ export const loginUser = async (req: Request, res: Response) => {
         const { email, password } = req.body;
         console.log(email, password);
 
-        const user = await User.findOne({ email, role: "user" });
+        const user = await User.findOne({ email, role: { $in: ["user", "vendor"] } });
         console.log("user", user);
         if (!user) {
             return res.status(404).json({ message: "User not found", success: false });
@@ -87,7 +87,7 @@ export const loginVendor = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
 
-        const user = await User.findOne({ email, role: "vendor" });
+        const user = await User.findOne({ email, role: { $in: ["user", "vendor"] } });
 
         if (!user) {
             return res.status(404).json({ message: "Vendor not found", success: false });
@@ -195,7 +195,12 @@ export const getCurrentUser = async (req: Request, res: Response) => {
         }
 
         const decodedToken: any = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string);
-        const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
+        let user = await User.findById(decodedToken?._id).select("-password -refreshToken");
+        
+        if (!user) {
+            const Admin = require("../models/admin.model").default;
+            user = await Admin.findById(decodedToken?._id).select("-password");
+        }
 
         if (!user) {
             return res.status(401).json({ success: false, message: "Invalid Access Token" });

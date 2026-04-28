@@ -19,7 +19,7 @@ export default function ProviderCard({ provider }) {
             </h3>
             {provider.verified && <CheckCircle size={16} className="text-success" color="var(--success-color)" />}
           </div>
-          <p className="text-sub">{provider.category} • {provider.experience}</p>
+          <p className="text-sub">{provider.category || 'Professional Partner'} • {provider.experience || 'Verified'}</p>
           
           <div className="flex justify-between items-center" style={{ marginTop: '0.25rem' }}>
             <div className="stars">

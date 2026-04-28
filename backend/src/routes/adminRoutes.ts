@@ -4,14 +4,15 @@ import { isAuthenticated, isAdmin } from "../middlewares/auth.middleware";
 
 const router = express.Router();
 
+router.post("/register", registerAdmin);
+router.post("/login", loginAdmin);
+
+// Protect all routes below this line
 router.use(isAuthenticated, isAdmin);
 
 router.get("/dashboard", getAdminDashboardData);
 router.post("/verify-kyc/:id", verifyVendorKyc);
 router.delete("/remove/:id", deleteUserOrVendor);
-
-router.post("/register", registerAdmin);
-router.post("/login", loginAdmin);
 
 router.get("/", getAdmins);
 router.get("/:id", getAdminById);

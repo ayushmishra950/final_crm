@@ -26,6 +26,8 @@ function App() {
             <Route path="/user-auth" element={<UserAuth />} />
             <Route path="/vendor-auth" element={<VendorAuth />} />
             <Route path="/admin-login" element={<AdminAuth />} />
+            <Route path="/admin/login" element={<AdminAuth />} />
+            <Route path="/admin/auth" element={<AdminAuth />} />
 
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/user-profile" element={<UserProfile />} />

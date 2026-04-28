@@ -85,8 +85,8 @@ export default function ProviderProfile() {
         </div>
 
         <div className="flex items-center gap-2">
-          <h1 className="text-h1" style={{ margin: 0 }}>{provider.name}</h1>
-          {provider.verified && <CheckCircle size={18} className="text-success" color="var(--success-color)" />}
+          <h1 className="text-h1" style={{ margin: 0 }}>{provider.businessName || provider.fullName}</h1>
+          {provider.isKycVerified && <CheckCircle size={18} className="text-success" color="var(--success-color)" />}
         </div>
         <p className="text-sub" style={{ fontSize: '1rem', marginBottom: '1rem' }}>{provider.category}</p>
 

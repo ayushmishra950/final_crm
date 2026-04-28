@@ -5,7 +5,8 @@ const initialState = {
     providers: [],
     users: [],
     reviews: [],
-    categories: []
+    categories: [],
+    adminData: null
 }
 
 const adminSlice = createSlice({
@@ -26,9 +27,12 @@ const adminSlice = createSlice({
         },
         setAdminCategories: (state, action) => {
             state.categories = action.payload;
+        },
+        setAdminData: (state, action) => {
+            state.adminData = action.payload;
         }
     }
 })
 
-export const { setAdminStats, setAdminProviders, setAdminUsers, setAdminReviews, setAdminCategories } = adminSlice.actions;
+export const { setAdminStats, setAdminProviders, setAdminUsers, setAdminReviews, setAdminCategories, setAdminData } = adminSlice.actions;
 export default adminSlice.reducer;
