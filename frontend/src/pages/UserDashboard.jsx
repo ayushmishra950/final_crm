@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import ProviderCard from '../components/ProviderCard';
 import BottomNav from '../components/BottomNav';
 import { getExploreProviders } from '../service/userService';
+import { getCategories } from '../service/categoryService';
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -17,6 +18,9 @@ export default function UserDashboard() {
 
   useEffect(() => {
     fetchProviders();
+    if (categories.length === 0) {
+      fetchCategories();
+    }
   }, [activeFilter, sortBy]);
 
   // Debounced search
@@ -37,16 +41,22 @@ export default function UserDashboard() {
       });
       if (res.success) {
         setProviders(res.providers);
-        // Extract categories from results if categories list is empty
-        if (categories.length === 0) {
-           const uniqueCats = [...new Set(res.providers.map(p => p.category))];
-           setCategories(uniqueCats);
-        }
       }
     } catch (error) {
       console.error("Error fetching providers:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await getCategories();
+      if (res.success) {
+        setCategories(res.data.map(c => c.name));
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
     }
   };
 

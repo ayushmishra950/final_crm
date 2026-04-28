@@ -1,17 +1,29 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Users, BarChart2, ShieldCheck, Flag, LogOut, FileText, Trash2, X, TrendingUp, CheckCircle, Search, User } from 'lucide-react';
+import { ArrowLeft, Users, BarChart2, ShieldCheck, Flag, LogOut, FileText, Trash2, X, TrendingUp, CheckCircle, Search, User, Grid, Plus, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as adminService from '../../service/adminService';
+import * as categoryService from '../../service/categoryService';
+import { useDispatch, useSelector } from 'react-redux';
+import { setAdminStats, setAdminProviders, setAdminUsers, setAdminReviews, setAdminCategories } from '../../redux-toolkit/slice/adminSlice';
+import { connectSocket } from '../../socket/socket';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [stats, setStats] = useState({ totalUsers: 0, totalProviders: 0, activeListings: 0, revenue: 0 });
-  const [providers, setProviders] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [reviews, setReviews] = useState([]);
+  
+  const dispatch = useDispatch();
+  const stats = useSelector((state) => state.admin.stats) || { totalUsers: 0, totalProviders: 0, activeListings: 0, revenue: 0 };
+  const providers = useSelector((state) => state.admin.providers) || [];
+  const users = useSelector((state) => state.admin.users) || [];
+  const reviews = useSelector((state) => state.admin.reviews) || [];
+  const categories = useSelector((state) => state.admin.categories) || [];
+
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState(null);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({ name: '', image: '', description: '' });
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -23,10 +35,15 @@ export default function AdminDashboard() {
       try {
           const res = await adminService.getAdminDashboardData();
           if (res.success) {
-              setStats(res.data.stats);
-              setProviders(res.data.providers);
-              setUsers(res.data.users);
-              setReviews(res.data.reviews);
+              dispatch(setAdminStats(res.data.stats));
+              dispatch(setAdminProviders(res.data.providers));
+              dispatch(setAdminUsers(res.data.users));
+              dispatch(setAdminReviews(res.data.reviews));
+              connectSocket('admin'); // connect socket for admin
+          }
+          const catRes = await categoryService.getCategories();
+          if (catRes.success) {
+              dispatch(setAdminCategories(catRes.data));
           }
       } catch (error) {
           console.error("Failed to fetch admin data", error);
@@ -38,7 +55,7 @@ export default function AdminDashboard() {
   const handleApprove = async (id) => {
      try {
          await adminService.verifyVendorKyc(id);
-         setProviders(providers.map(p => p._id === id ? { ...p, isKycVerified: true } : p));
+         dispatch(setAdminProviders(providers.map(p => p._id === id ? { ...p, isKycVerified: true } : p)));
          setModalOpen(false);
      } catch (error) {
          console.error("Verification failed", error);
@@ -49,7 +66,7 @@ export default function AdminDashboard() {
      if(!window.confirm("Are you sure you want to delete this provider?")) return;
      try {
          await adminService.removeUserOrVendor(id);
-         setProviders(providers.filter(p => p._id !== id));
+         dispatch(setAdminProviders(providers.filter(p => p._id !== id)));
          setModalOpen(false);
      } catch (error) {
          console.error("Rejection failed", error);
@@ -60,10 +77,43 @@ export default function AdminDashboard() {
      if (!window.confirm("Are you sure you want to remove this user?")) return;
      try {
          await adminService.removeUserOrVendor(id);
-         setUsers(users.filter(u => u._id !== id));
+         dispatch(setAdminUsers(users.filter(u => u._id !== id)));
      } catch (error) {
          console.error("Delete failed", error);
      }
+  };
+
+  const handleCategorySubmit = async (e) => {
+      e.preventDefault();
+      try {
+          if (selectedCategory) {
+              const res = await categoryService.updateCategory(selectedCategory._id, categoryForm);
+              if (res.success) {
+                  dispatch(setAdminCategories(categories.map(c => c._id === selectedCategory._id ? res.data : c)));
+              }
+          } else {
+              const res = await categoryService.createCategory(categoryForm);
+              if (res.success) {
+                  dispatch(setAdminCategories([res.data, ...categories]));
+              }
+          }
+          setCategoryModalOpen(false);
+          setSelectedCategory(null);
+          setCategoryForm({ name: '', image: '', description: '' });
+      } catch (error) {
+          console.error("Category action failed", error);
+          alert(error.message || "Something went wrong");
+      }
+  };
+
+  const handleDeleteCategory = async (id) => {
+      if (!window.confirm("Are you sure you want to delete this category?")) return;
+      try {
+          await categoryService.deleteCategory(id);
+          dispatch(setAdminCategories(categories.filter(c => c._id !== id)));
+      } catch (error) {
+          console.error("Delete category failed", error);
+      }
   };
 
   const filteredProviders = providers.filter(p => 
@@ -75,6 +125,10 @@ export default function AdminDashboard() {
   const filteredUsers = users.filter(u => 
       (u.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
       (u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || '')
+  );
+
+  const filteredCategories = categories.filter(c => 
+      (c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || '')
   );
 
   if (loading) {
@@ -215,6 +269,9 @@ export default function AdminDashboard() {
             <div className={`admin-tab ${activeTab === 'reviews' ? 'active' : ''}`} onClick={() => setActiveTab('reviews')}>
                <Flag size={20}/> Content Moderation
             </div>
+            <div className={`admin-tab ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
+               <Grid size={20}/> Categories
+            </div>
          </div>
 
          {/* MAIN WORKSPACE */}
@@ -223,7 +280,7 @@ export default function AdminDashboard() {
             <div className="admin-header">
                <div>
                   <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 600 }}>
-                      {activeTab === 'dashboard' ? 'Control Panel' : activeTab === 'providers' ? 'Network & KYC' : activeTab === 'users' ? 'User Management' : 'Trust & Moderation'}
+                      {activeTab === 'dashboard' ? 'Control Panel' : activeTab === 'providers' ? 'Network & KYC' : activeTab === 'users' ? 'User Management' : activeTab === 'categories' ? 'Service Categories' : 'Trust & Moderation'}
                   </h2>
                </div>
                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -353,6 +410,44 @@ export default function AdminDashboard() {
                   </div>
                )}
 
+               {/* ----------------- CATEGORIES ----------------- */}
+               {activeTab === 'categories' && (
+                  <div className="animate-fade-in">
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div style={{ position: 'relative', width: '100%', maxWidth: '350px' }}>
+                           <Search size={18} style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '1rem', color: '#94a3b8' }}/>
+                           <input type="text" placeholder="Search categories..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.5rem', borderRadius: '99px', border: '1px solid #cbd5e1', outline: 'none', background: 'white' }} />
+                        </div>
+                        <button className="admin-btn admin-btn-primary" onClick={() => { setSelectedCategory(null); setCategoryForm({ name: '', image: '', description: '' }); setCategoryModalOpen(true); }}>
+                           <Plus size={18} /> Add Category
+                        </button>
+                     </div>
+
+                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                        {filteredCategories.map(c => (
+                           <div key={c._id} className="admin-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                              <img src={c.image || 'https://via.placeholder.com/150'} style={{ width: '100%', height: '160px', borderRadius: '12px', objectFit: 'cover' }} />
+                              <div>
+                                 <h4 style={{ margin: 0, fontSize: '1.125rem', color: '#1e293b' }}>{c.name}</h4>
+                                 <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '4px', height: '40px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.description || "No description provided."}</p>
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
+                                 <button className="admin-btn admin-btn-outline" style={{ flex: 1 }} onClick={() => { setSelectedCategory(c); setCategoryForm({ name: c.name, image: c.image, description: c.description || '' }); setCategoryModalOpen(true); }}>
+                                    <Edit size={16} /> Edit
+                                 </button>
+                                 <button className="admin-btn admin-btn-danger" style={{ flex: 1 }} onClick={() => handleDeleteCategory(c._id)}>
+                                    <Trash2 size={16} /> Delete
+                                 </button>
+                              </div>
+                           </div>
+                        ))}
+                        {filteredCategories.length === 0 && (
+                           <div style={{ gridColumn: '1/-1', padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No categories found.</div>
+                        )}
+                     </div>
+                  </div>
+               )}
+
                {/* ----------------- REVIEWS ----------------- */}
                {activeTab === 'reviews' && (
                   <div className="animate-fade-in">
@@ -380,7 +475,7 @@ export default function AdminDashboard() {
                                     "{rev.comment}"
                                  </div>
                                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                    <button className="admin-btn admin-btn-danger" onClick={() => setReviews(reviews.filter(r => r._id !== rev._id))}>
+                                    <button className="admin-btn admin-btn-danger" onClick={() => dispatch(setAdminReviews(reviews.filter(r => r._id !== rev._id)))}>
                                        <Trash2 size={16}/> Delete Review
                                     </button>
                                  </div>
@@ -431,6 +526,36 @@ export default function AdminDashboard() {
                   </div>
                </div>
             </div>
+         )}
+
+         {/* ----------------- CATEGORY MODAL ----------------- */}
+         {categoryModalOpen && (
+             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyItems: 'center', padding: '1rem' }}>
+                <div className="admin-card animate-fade-in" style={{ width: '500px', maxWidth: '100%', margin: '0 auto', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+                   <button className="admin-btn" style={{ position: 'absolute', top: '1rem', right: '1rem', background: '#f1f5f9', color: '#64748b', padding: '0.4rem' }} onClick={() => setCategoryModalOpen(false)}><X size={20}/></button>
+                   
+                   <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: '#1e293b' }}>{selectedCategory ? 'Update Category' : 'Create New Category'}</h2>
+                   
+                   <form onSubmit={handleCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div>
+                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Category Name</label>
+                         <input type="text" required value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} placeholder="e.g. Electrician, Plumber" style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                      </div>
+                      <div>
+                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Image URL</label>
+                         <input type="text" required value={categoryForm.image} onChange={(e) => setCategoryForm({ ...categoryForm, image: e.target.value })} placeholder="https://example.com/image.jpg" style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                      </div>
+                      <div>
+                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#475569' }}>Description (Optional)</label>
+                         <textarea rows="3" value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} placeholder="Short description of services in this category..." style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', resize: 'none' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                         <button type="button" className="admin-btn admin-btn-outline" style={{ flex: 1 }} onClick={() => setCategoryModalOpen(false)}>Cancel</button>
+                         <button type="submit" className="admin-btn admin-btn-primary" style={{ flex: 1 }}>{selectedCategory ? 'Save Changes' : 'Create Category'}</button>
+                      </div>
+                   </form>
+                </div>
+             </div>
          )}
 
       </div>

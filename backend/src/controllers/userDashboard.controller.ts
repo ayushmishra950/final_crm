@@ -3,6 +3,7 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import User from "../models/user.model";
 import Booking from "../models/booking.model";
 import Notification from "../models/notification.model";
+import Category from "../models/category.model";
 import bcrypt from "bcryptjs";
 
 export const getUserDashboardData = async (req: AuthRequest, res: Response) => {
@@ -185,8 +186,8 @@ export const getHomeData = async (req: AuthRequest, res: Response) => {
             .populate("serviceId", "name category")
             .sort({ date: -1 });
 
-        // Categories (Get unique categories from vendors)
-        const categories = await User.distinct("category", { role: "vendor", category: { $ne: null }, isKycVerified: true });
+        // Categories (Get from Category model)
+        const categories = await Category.find().sort({ name: 1 });
 
         // Top Rated Providers
         const topRatedProviders = await User.find({ role: "vendor", isKycVerified: true })
@@ -198,7 +199,7 @@ export const getHomeData = async (req: AuthRequest, res: Response) => {
             success: true,
             data: {
                 ongoingBooking,
-                categories,
+                categories: categories.map(c => c.name),
                 topRatedProviders
             }
         });
@@ -240,6 +241,22 @@ export const getExploreProviders = async (req: AuthRequest, res: Response) => {
         res.status(200).json({
             success: true,
             providers
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const getVendorProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const vendor = await User.findById(id).select("-password -tokens -role");
+        if (!vendor) {
+            return res.status(404).json({ success: false, message: "Vendor not found" });
+        }
+        res.status(200).json({
+            success: true,
+            vendor
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

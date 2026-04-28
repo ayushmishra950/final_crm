@@ -3,7 +3,8 @@ import { ArrowLeft, Edit3, MapPin, CreditCard, HelpCircle, FileText, LogOut, Che
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import { updateProfile } from '../service/auth';
-import { setUserData } from "@/redux-toolkit/slice/userSlice";
+import { setUserData, setUserDashboard, setFullHistory, setPayments, setFavorites } from "@/redux-toolkit/slice/userSlice";
+import { connectSocket } from '../socket/socket';
 import { useAppDispatch, useAppSelector } from '@/redux-toolkit/customHook/customHook';
 import * as userService from '../service/userService';
 import { Bell, Heart, Settings, Shield, IndianRupee, History } from 'lucide-react';
@@ -19,14 +20,14 @@ export default function UserProfile() {
    const [showPasswordModal, setShowPasswordModal] = useState(false);
    const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '' });
 
-   const [dashboardData, setDashboardData] = useState({
+   const dashboardData = useAppSelector((state) => state?.user?.dashboardData) || {
       stats: { totalBookings: 0, pendingBookings: 0, completedBookings: 0 },
       recentBookings: [],
       notifications: []
-   });
-   const [fullHistory, setFullHistory] = useState([]);
-   const [payments, setPayments] = useState([]);
-   const [favorites, setFavorites] = useState([]);
+   };
+   const fullHistory = useAppSelector((state) => state?.user?.fullHistory) || [];
+   const payments = useAppSelector((state) => state?.user?.payments) || [];
+   const favorites = useAppSelector((state) => state?.user?.favorites) || [];
    const [loading, setLoading] = useState(true);
 
    const dispatch = useAppDispatch();
@@ -51,8 +52,9 @@ export default function UserProfile() {
          setLoading(true);
          const res = await userService.getDashboardData();
          if (res.success) {
-            setDashboardData(res.data);
+            dispatch(setUserDashboard(res.data));
             dispatch(setUserData(res.data.user));
+            connectSocket(res.data.user._id);
          }
       } catch (error) {
          console.log(error);
@@ -64,21 +66,21 @@ export default function UserProfile() {
    const fetchHistory = async () => {
       try {
          const res = await userService.getBookingHistory();
-         if (res.success) setFullHistory(res.bookings);
+         if (res.success) dispatch(setFullHistory(res.bookings));
       } catch (error) { console.log(error); }
    }
 
    const fetchPayments = async () => {
       try {
          const res = await userService.getPaymentHistory();
-         if (res.success) setPayments(res.payments);
+         if (res.success) dispatch(setPayments(res.payments));
       } catch (error) { console.log(error); }
    }
 
    const fetchFavorites = async () => {
       try {
          const res = await userService.getFavorites();
-         if (res.success) setFavorites(res.favorites);
+         if (res.success) dispatch(setFavorites(res.favorites));
       } catch (error) { console.log(error); }
    }
 

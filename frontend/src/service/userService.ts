@@ -99,3 +99,21 @@ export const getExploreProviders = async (params: any) => {
         throw error.response?.data || error.message;
     }
 };
+
+export const createBooking = async (bookingData: any) => {
+    try {
+        const response = await api.post("/booking/create", bookingData);
+        return response.data;
+    } catch (error: any) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const getVendorProfile = async (id: string) => {
+    try {
+        const response = await api.get(`/user-dashboard/vendor/${id}`);
+        return response.data;
+    } catch (error: any) {
+        throw error.response?.data || error.message;
+    }
+};

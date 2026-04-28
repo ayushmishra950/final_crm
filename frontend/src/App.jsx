@@ -12,11 +12,13 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import Notifications from './pages/Notifications';
 import { useState } from 'react';
 import { CustomToastProvider } from "@/components/CustomToast";
+import PostCallFeedbackModal from './components/PostCallFeedbackModal';
 
 function App() {
   return (
     <div className="app-container">
       <CustomToastProvider>
+        <PostCallFeedbackModal />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -27,7 +29,7 @@ function App() {
 
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/user-profile" element={<UserProfile />} />
-            <Route path="/provider" element={<ProviderProfile />} />
+            <Route path="/provider/:id" element={<ProviderProfile />} />
             <Route path="/notifications" element={<Notifications />} />
 
             <Route path="/provider-dashboard" element={<ProviderDashboard />} />

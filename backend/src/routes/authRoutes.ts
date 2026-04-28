@@ -4,6 +4,7 @@ import {
     loginUser,
     registerVendor,
     loginVendor,
+    loginAdmin,
     logoutUser,
     refreshAccessToken,
     getCurrentUser,
@@ -17,6 +18,7 @@ router.post("/login/user", loginUser);
 
 router.post("/register/vendor", registerVendor);
 router.post("/login/vendor", loginVendor);
+router.post("/login/admin", loginAdmin);
 
 router.post("/logout", logoutUser);
 router.post("/refresh-token", refreshAccessToken);

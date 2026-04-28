@@ -29,5 +29,6 @@ router.post("/change-password", isAuthenticated, userDashboardController.changeP
 // Public/Explore
 router.get("/home", isAuthenticated, userDashboardController.getHomeData);
 router.get("/explore", isAuthenticated, userDashboardController.getExploreProviders);
+router.get("/vendor/:id", isAuthenticated, userDashboardController.getVendorProfile);
 
 export default router;

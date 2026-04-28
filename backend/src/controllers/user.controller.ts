@@ -110,6 +110,33 @@ export const loginVendor = async (req: Request, res: Response) => {
     }
 };
 
+export const loginAdmin = async (req: Request, res: Response) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email, role: "admin" });
+
+        if (!user) {
+            return res.status(404).json({ message: "Admin not found", success: false });
+        }
+
+        const isPasswordValid = await user.comparePassword(password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Invalid credentials", success: false });
+        }
+
+        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id.toString());
+
+        res.status(200)
+            .cookie("accessToken", accessToken, { ...cookieOptions, maxAge: 10 * 60 * 1000 })
+            .cookie("refreshToken", refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 })
+            .json({ message: "Admin logged in successfully", success: true, user });
+
+    } catch (error: any) {
+        res.status(500).json({ message: error?.message || "Internal server error", success: false });
+    }
+};
+
 export const logoutUser = async (req: Request, res: Response) => {
     try {
         // Need to identify user from cookies ideally, but if not we just clear the cookies

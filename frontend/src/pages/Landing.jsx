@@ -1,9 +1,31 @@
-import { useNavigate } from 'react-router-dom';
-import { User, Briefcase, ShieldCheck, Star, Shield, Zap, Wrench, CheckCircle } from 'lucide-react';
-import { categories } from '../data/dummyData';
+import { useState, useEffect } from 'react';
+import { User, Briefcase, ShieldCheck, Star, Shield, Zap, Wrench, CheckCircle, Droplets, Sparkles, Scissors, Paintbrush, Wind, Clock } from 'lucide-react';
+import { getCategories } from '../service/categoryService';
 
 export default function Landing() {
   const navigate = useNavigate();
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCats = async () => {
+       try {
+          const res = await getCategories();
+          if (res.success) setCategories(res.data);
+       } catch (error) { console.log(error); }
+    }
+    fetchCats();
+  }, []);
+
+  const getCategoryIcon = (categoryName) => {
+    const name = categoryName?.toLowerCase() || '';
+    if (name.includes('repair')) return Wrench;
+    if (name.includes('clean')) return Sparkles;
+    if (name.includes('plumb')) return Droplets;
+    if (name.includes('electric')) return Zap;
+    if (name.includes('paint')) return Paintbrush;
+    if (name.includes('salon') || name.includes('hair')) return Scissors;
+    return Wrench; // Default
+  };
 
   return (
     <div className="landing-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--surface-color)' }}>
@@ -57,14 +79,19 @@ export default function Landing() {
          </div>
 
          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem' }}>
-            {categories.slice(0, 6).map((cat, idx) => (
-               <div key={idx} className="card text-center" style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '2rem 1rem' }} onClick={() => navigate('/user-auth')}>
-                  <div style={{ width: 64, height: 64, margin: '0 auto 1rem auto', background: 'var(--primary-light)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)' }}>
-                     <Wrench size={32} />
+            {categories.length > 0 ? categories.slice(0, 6).map((cat, idx) => {
+               const Icon = getCategoryIcon(cat.name);
+               return (
+                  <div key={idx} className="card text-center" style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '2rem 1rem' }} onClick={() => navigate('/user-auth')}>
+                     <div style={{ width: 64, height: 64, margin: '0 auto 1rem auto', background: 'var(--primary-light)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)' }}>
+                        <Icon size={32} />
+                     </div>
+                     <h3 className="text-h2" style={{ fontSize: '1rem', margin: 0 }}>{cat.name}</h3>
                   </div>
-                  <h3 className="text-h2" style={{ fontSize: '1rem', margin: 0 }}>{cat.name}</h3>
-               </div>
-            ))}
+               );
+            }) : (
+               <div style={{ gridColumn: '1/-1', textAlign: 'center', color: '#94a3b8' }}>Loading categories...</div>
+            )}
          </div>
       </div>
 

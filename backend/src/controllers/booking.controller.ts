@@ -52,6 +52,8 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
     }
 };
 
+import { getIO } from "../service/socketHelper";
+
 export const createBooking = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user._id;
@@ -62,9 +64,17 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
             vendorId,
             serviceId,
             date,
-            totalAmount,
-            location
+            totalAmount: totalAmount || 0,
+            location: location || "TBD"
         });
+
+        // Emit socket event to vendor
+        try {
+            const io = getIO();
+            io.emit(`new_booking_${vendorId}`, newBooking);
+        } catch (socketErr) {
+            console.error("Socket emission failed:", socketErr);
+        }
 
         res.status(201).json({
             success: true,

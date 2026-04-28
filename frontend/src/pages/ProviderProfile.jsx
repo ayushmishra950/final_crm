@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, MapPin, CheckCircle, Phone, MessageCircle, Clock, Shield } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, CheckCircle, Phone, MessageCircle, Clock, Shield, Calendar } from 'lucide-react';
 import { providers } from '../data/dummyData';
 import { useAppDispatch, useAppSelector } from '@/redux-toolkit/customHook/customHook';
 import { getCurrentUser, updateProfile } from '../service/auth';
@@ -24,6 +24,13 @@ export default function ProviderProfile() {
     setReview('');
     setTimeout(() => setToast(false), 3000);
   };
+
+  const handleCall = () => {
+    if (!provider) return;
+    sessionStorage.setItem('pendingCallVendor', JSON.stringify({ id: provider._id || provider.id, name: provider.fullName || provider.businessName || provider.name }));
+  };
+
+  const whatsappMessage = provider ? encodeURIComponent(`Hi, mujhe ${provider.category || 'service'} chahiye, aap available ho kya?`) : '';
 
   const fetchUserData = async () => {
         try {
@@ -66,8 +73,14 @@ export default function ProviderProfile() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-40px', marginBottom: '1rem' }}>
           <img src={provider.profileImage} alt={provider.fullName} className="avatar-lg" style={{ border: '4px solid var(--surface-color)', boxShadow: 'var(--shadow-sm)' }} />
           <div className="flex gap-2">
-            <a href={`tel:+919999999999`} className="btn-icon" style={{ background: 'var(--surface-color)', color: 'var(--text-main)', width: '40px', height: '40px' }}><Phone size={20}/></a>
-            <a href={`https://wa.me/919999999999`} className="btn-icon" style={{ background: '#25D366', color: 'white', border: 'none', width: '40px', height: '40px' }}><MessageCircle size={20}/></a>
+            <a href={`tel:${provider.mobile || '+919999999999'}`} onClick={handleCall} className="btn-icon" style={{ background: 'var(--surface-color)', color: 'var(--text-main)', width: '40px', height: '40px' }}><Phone size={20}/></a>
+            <a href={`https://wa.me/${provider.mobile || '919999999999'}?text=${whatsappMessage}`} target="_blank" rel="noreferrer" className="btn-icon" style={{ background: '#25D366', color: 'white', border: 'none', width: '40px', height: '40px' }}><MessageCircle size={20}/></a>
+            <button className="btn-icon" style={{ background: 'var(--primary-color)', color: 'white', border: 'none', width: '40px', height: '40px' }} onClick={() => {
+                sessionStorage.setItem('pendingCallVendor', JSON.stringify({ id: provider._id || provider.id, name: provider.fullName || provider.businessName || provider.name }));
+                window.dispatchEvent(new Event('focus')); // Trigger the modal artificially for booking request
+            }}>
+              <Calendar size={20} />
+            </button>
           </div>
         </div>
 

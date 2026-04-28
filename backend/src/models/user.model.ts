@@ -2,7 +2,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 import bcrypt from "bcryptjs";
 
-export type UserRole = "user" | "vendor";
+export type UserRole = "user" | "vendor" | "admin";
 
 export interface IUser extends Document {
     fullName: string;
@@ -69,7 +69,7 @@ const UserSchema: Schema<IUser> = new Schema(
 
         role: {
             type: String,
-            enum: ["user", "vendor"],
+            enum: ["user", "vendor", "admin"],
             default: "user",
         },
 

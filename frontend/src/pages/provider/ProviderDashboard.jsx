@@ -7,6 +7,10 @@ import { ArrowLeft,
 import { useNavigate } from 'react-router-dom';
 import * as vendorService from '../../service/vendorService';
 import * as serviceManagement from '../../service/serviceManagement';
+import { useDispatch, useSelector } from 'react-redux';
+import { setVendorUser, setVendorDashboard, setMyServices } from '../../redux-toolkit/slice/vendorSlice';
+import { connectSocket } from '../../socket/socket';
+import { getCategories } from '../../service/categoryService';
 
 export default function ProviderDashboard() {
   const navigate = useNavigate();
@@ -19,29 +23,12 @@ export default function ProviderDashboard() {
   const [showAddService, setShowAddService] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCompletionAlert, setShowCompletionAlert] = useState(false);
-  
-  const [vendorUser, setVendorUser] = useState({ 
-    fullName: '', 
-    mobile: '', 
-    about: '', 
-    businessName: '',
-    category: '',
-    operatingRadius: 10,
-    address: ''
-  });
+  const [categories, setCategories] = useState([]);
 
-  const [dashboardData, setDashboardData] = useState({
-    stats: {
-        totalBookings: 0,
-        pendingBookings: 0,
-        acceptedBookings: 0,
-        totalEarnings: 0
-    },
-    recentBookings: [],
-    reviews: []
-  });
-
-  const [myServices, setMyServices] = useState([]);
+  const dispatch = useDispatch();
+  const vendorUser = useSelector((state) => state.vendor.vendorUser) || {};
+  const dashboardData = useSelector((state) => state.vendor.dashboardData) || { stats: {}, recentBookings: [], reviews: [] };
+  const myServices = useSelector((state) => state.vendor.myServices) || [];
   const [newService, setNewService] = useState({
     name: '',
     description: '',
@@ -57,20 +44,26 @@ export default function ProviderDashboard() {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const [dashRes, servicesRes] = await Promise.all([
+      const [dashRes, servicesRes, catRes] = await Promise.all([
         vendorService.getVendorDashboard(),
-        serviceManagement.getMyServices()
+        serviceManagement.getMyServices(),
+        getCategories()
       ]);
 
       if (dashRes.success) {
-        setDashboardData(dashRes.data);
-        setVendorUser(dashRes.data.vendor);
+        dispatch(setVendorDashboard(dashRes.data));
+        dispatch(setVendorUser(dashRes.data.vendor));
         setIsOnline(dashRes.data.vendor.isOnline);
         setIsKycVerified(dashRes.data.vendor.isKycVerified);
+        connectSocket(dashRes.data.vendor._id); // Connect socket using vendor ID
       }
 
       if (servicesRes.success) {
-        setMyServices(servicesRes.services);
+        dispatch(setMyServices(servicesRes.services));
+      }
+
+      if (catRes.success) {
+        setCategories(catRes.data);
       }
     } catch (error) {
       console.error("Error fetching vendor data:", error);
@@ -109,7 +102,7 @@ export default function ProviderDashboard() {
     try {
         const res = await vendorService.updateVendorProfile(vendorUser);
         if (res.success) {
-            setVendorUser(res.vendor);
+            dispatch(setVendorUser(res.vendor));
             setIsEditing(false);
             showToast("Profile Updated Successfully!");
         }
@@ -125,7 +118,7 @@ export default function ProviderDashboard() {
     try {
         const res = await vendorService.submitKyc(data);
         if (res.success) {
-            setVendorUser(res.vendor);
+            dispatch(setVendorUser(res.vendor));
             setShowKycForm(false);
             showToast("KYC Documents Submitted Successfully!");
         }
@@ -139,7 +132,7 @@ export default function ProviderDashboard() {
     try {
         const res = await serviceManagement.createService(newService);
         if (res.success) {
-            setMyServices([res.service, ...myServices]);
+            dispatch(setMyServices([res.service, ...myServices]));
             setShowAddService(false);
             setNewService({ name: '', description: '', price: '', category: '', images: [] });
             showToast("Service added successfully!");
@@ -154,7 +147,7 @@ export default function ProviderDashboard() {
     try {
         const res = await serviceManagement.deleteService(id);
         if (res.success) {
-            setMyServices(myServices.filter(s => s._id !== id));
+            dispatch(setMyServices(myServices.filter(s => s._id !== id)));
             showToast("Service deleted");
         }
     } catch (error) {
@@ -170,7 +163,7 @@ export default function ProviderDashboard() {
             const updatedBookings = dashboardData.recentBookings.map(b => 
                 b._id === id ? { ...b, status } : b
             );
-            setDashboardData({ ...dashboardData, recentBookings: updatedBookings });
+            dispatch(setVendorDashboard({ ...dashboardData, recentBookings: updatedBookings }));
             showToast(`Booking ${status}`);
         }
     } catch (error) {
@@ -213,19 +206,26 @@ export default function ProviderDashboard() {
                <form onSubmit={handleUpdateProfile}>
                   <div className="input-group" style={{ marginBottom: '1rem' }}>
                      <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Partner Name</label>
-                     <input type="text" className="input-field" value={vendorUser.fullName} onChange={(e) => setVendorUser({...vendorUser, fullName: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                     <input type="text" className="input-field" value={vendorUser.fullName || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, fullName: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
                   </div>
                   <div className="input-group" style={{ marginBottom: '1rem' }}>
                      <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Business Name</label>
-                     <input type="text" className="input-field" value={vendorUser.businessName} onChange={(e) => setVendorUser({...vendorUser, businessName: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                     <input type="text" className="input-field" value={vendorUser.businessName || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, businessName: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
                   </div>
                   <div className="input-group" style={{ marginBottom: '1rem' }}>
                      <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Mobile Number</label>
-                     <input type="tel" className="input-field" value={vendorUser.mobile} onChange={(e) => setVendorUser({...vendorUser, mobile: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                     <input type="tel" className="input-field" value={vendorUser.mobile || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, mobile: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Primary Service Category</label>
+                     <select className="input-field" value={vendorUser.category || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, category: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required>
+                        <option value="">Select Category</option>
+                        {categories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
+                     </select>
                   </div>
                   <div className="input-group" style={{ marginBottom: '1.5rem' }}>
                      <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>About Business</label>
-                     <textarea className="input-field" value={vendorUser.about} onChange={(e) => setVendorUser({...vendorUser, about: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '80px', resize: 'vertical' }} required />
+                     <textarea className="input-field" value={vendorUser.about || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, about: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '80px', resize: 'vertical' }} required />
                   </div>
                   <button type="submit" style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>Save Changes</button>
                </form>
@@ -251,7 +251,10 @@ export default function ProviderDashboard() {
                     </div>
                     <div className="input-group">
                         <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Category</label>
-                        <input type="text" className="input-field" value={newService.category} onChange={(e) => setNewService({...newService, category: e.target.value})} placeholder="Electrician" style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                        <select className="input-field" value={newService.category} onChange={(e) => setNewService({...newService, category: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required>
+                           <option value="">Select</option>
+                           {categories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
+                        </select>
                     </div>
                   </div>
                   <div className="input-group" style={{ marginBottom: '1.5rem' }}>

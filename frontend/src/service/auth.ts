@@ -25,6 +25,11 @@ export const loginVendor = async (obj: any) => {
     return res;
 };
 
+export const loginAdmin = async (obj: any) => {
+    const res = await api.post("/auth/login/admin", obj);
+    return res;
+};
+
 export const logout = async () => {
     const res = await api.post("/auth/logout");
     return res;

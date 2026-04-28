@@ -34,3 +34,10 @@ export const isVendor = (req: AuthRequest, res: Response, next: NextFunction) =>
     }
     next();
 };
+
+export const isAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (req.user?.role !== "admin") {
+        return res.status(403).json({ success: false, message: "Forbidden: Admin access only" });
+    }
+    next();
+};

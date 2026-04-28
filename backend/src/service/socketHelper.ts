@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 
-let io;
+let ioInstance: Server;
 export const initSocket = (io: Server) => {
     io.on("connection", (socket: Socket) => {
         console.log("User connected:", socket.id);
@@ -16,12 +16,12 @@ export const initSocket = (io: Server) => {
         });
     });
 
-    io = io;
+    ioInstance = io;
 };
 
 export const getIO = () => {
-    if (!io) {
+    if (!ioInstance) {
         throw new Error("Socket not initialized");
     }
-    return io;
+    return ioInstance;
 }

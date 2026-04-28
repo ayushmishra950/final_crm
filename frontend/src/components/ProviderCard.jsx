@@ -1,7 +1,13 @@
-import { Star, MapPin, CheckCircle, Phone, MessageCircle } from 'lucide-react';
+import { Star, MapPin, CheckCircle, Phone, MessageCircle, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function ProviderCard({ provider }) {
+  const handleCall = () => {
+    sessionStorage.setItem('pendingCallVendor', JSON.stringify({ id: provider.id, name: provider.name }));
+  };
+
+  const whatsappMessage = encodeURIComponent(`Hi, mujhe ${provider.category || 'service'} chahiye, aap available ho kya?`);
+  
   return (
     <div className="card">
       <div className="flex gap-4">
@@ -29,13 +35,16 @@ export default function ProviderCard({ provider }) {
           </div>
         </div>
       </div>
-      <div className="action-row">
-        <a href={`tel:+919999999999`} className="btn btn-outline" style={{ flex: 1, padding: '0.5rem' }}>
+      <div className="action-row" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+        <a href={`tel:${provider.mobile || '+919999999999'}`} onClick={handleCall} className="btn btn-outline" style={{ flex: 1, padding: '0.5rem', justifyContent: 'center' }}>
           <Phone size={16} /> Call
         </a>
-        <a href={`https://wa.me/919999999999`} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ flex: 1, padding: '0.5rem', backgroundColor: '#25D366' }}>
+        <a href={`https://wa.me/${provider.mobile || '919999999999'}?text=${whatsappMessage}`} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ flex: 1, padding: '0.5rem', backgroundColor: '#25D366', justifyContent: 'center' }}>
           <MessageCircle size={16} /> WhatsApp
         </a>
+        <Link to={`/provider/${provider.id}`} className="btn btn-primary" style={{ flex: 1, padding: '0.5rem', justifyContent: 'center' }}>
+          <Calendar size={16} /> Book
+        </Link>
       </div>
     </div>
   );
