@@ -256,3 +256,70 @@ Tumhara goal ye nahi hona chahiye:
 Tumhara goal hona chahiye:
 
 “Mujhe reliable signal mile ki kaam hua ya nahi”
+
+
+
+
+
+
+
+
+new updatesss=============>
+1. user jab kisi vendor ki profile m review ya rating de rha hai to na hi vo backend k database m save
+  ho rha hai or na hi us vendor k dashboard m m vo review ya rating show ho rhi hai ise sahi karna hai tumhe?
+
+2. or ek y ki vendor k dashboard m all request proper show ho rhi hai but usme cost ya amount show nhi ho rha
+   hai ise bhi add karna hai ? 
+
+3. ki user k dashboard m category s filter nhi ho rha hai sahi s jab kar rha hu to data not found show ho
+   rha hai ise sahi karna hai tumhe ?
+
+4. user dashbaord m jha vendor k data show ho  rha hai uska ui ko sahi karna hai isme button us card s bahar 
+   ja rha hai ise sahi karo ?
+
+5. user or vendor ki profile par uski image show karni hai ?
+6. abhi user or vendor ki header m jo profile image hai uske click par profile page par redirect hona chahiye
+   but abhi vo login page par redirect kar rha hai ise bhi thik karna hai ?
+
+7. isme jo bhi api call hoti hai chahe admin ki ho ya user ya vendor ki usme kisi main bhi socket nhi use ho rha hai
+  agar hota ho turant response show hota jo abhi nhi ho rha hai to har api k response ko socket s
+    handle karna hai real time k liye ?
+
+8. vendor apni profile m jo portfolio k liye uski Business image add karne ka option banana hai sath hi
+  vo sari image vendor ko uski profile m or sath hi normal user jab kisi vendor ki profile dekhega to usme vo
+   show hogi y karna hai sirf
+
+9. jab koi user vendor ka book par click karta hai to uski profile open hoti hai lakin usme uska proper Complete
+    data nhi show ho rha hai ise sahi karna hai tumhe proper show karna hai tumhe or sath hi jinhone rating ya review diya hai
+    hai vo bhi vo review or jis user n diya hai uski profile pic or uska name kya review diya hai vo bhi show karna hai?
+
+10. admin kisi user ko koi bhi cheez ka response de ya vendor jise vo book karna chah rha hai or request send ki hai 
+   agar vo bhi koi koi response kare us user ko to notification jana chahiye notification count show hona chahiye y user k case or sath vendor
+   k case dono m hona chahiye y karna hai tumhe ?
+
+11. user k profile m edit ka icon top par show ho rha hai uski jagah use profile par show karna hai or card ko thoda sahi karna hai 
+   yhi same vendor k profile ka card bhi proper sahi nhi lag rha hai ise bhi sahi karna hai tumhe ?
+
+12. provider ki profile par logout ka option nhi hai use add karna hai?
+
+ Admin sections ==>
+
+13. isme overview m incomplete detail hai ise complete karna hai or sath hi ui bhi bilkul normal lag rha hai 
+  ise bhi sahi karna hai tumhe?
+
+14. admin ka jo user section hai usme functionality bilkul kam hai yani ki edit , block ya uski view detail 
+     in sabka option nhi hai use add karke or iske ui ko thoda strong banana hai jo abhi normal hai ?
+
+15. admin k provider section m bhi incomplete functionality hai ise bhi complete karna hai with ui storng ?
+
+16. category section ko table format m show karna hai or usme kitne vendor hai uska count or table k view k click par un vendor ki detail show karni hai 
+   jisme unki profile image , name , or vo verified hai ya nhi vo badge bhi show karna hai ?
+
+17. admin ki khud ka profile section ek to incomplete or ui bilkul bekar lag rha hai ise proper sahi s complete or iska ui ko bhi 
+   sahi karna hai tumhe proper sahi s ?
+
+18. admin k section m ek activity ka bhi section add karna hai jisme graph k through current year k user, vendor, or uska curent year ka revenue show hona chahiye 
+    but har month ka seprate hona chahiye y upar card m total 1 year ka data teeno ka show hona chahiye 
+    or niche graph m proper teeno ka data har month wise show karna hai tumhe?
+
+    
