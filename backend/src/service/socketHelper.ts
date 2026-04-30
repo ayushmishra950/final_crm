@@ -5,10 +5,9 @@ export const initSocket = (io: Server) => {
     io.on("connection", (socket: Socket) => {
         console.log("User connected:", socket.id);
 
-        socket.on("send_message", (data) => {
-            console.log("Message:", data);
-
-            io.emit("receive_message", data);
+        socket.on("join_room", (userId) => {
+            socket.join(userId);
+            console.log(`User ${socket.id} joined room ${userId}`);
         });
 
         socket.on("disconnect", () => {
@@ -24,4 +23,10 @@ export const getIO = () => {
         throw new Error("Socket not initialized");
     }
     return ioInstance;
-}
+};
+
+export const emitToUser = (userId: string, event: string, data: any) => {
+    if (ioInstance) {
+        ioInstance.to(userId.toString()).emit(event, data);
+    }
+};

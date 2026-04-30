@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Search, MapPin, ChevronDown, CheckCircle, Star, ArrowRight, Zap, Droplets, Wrench, Hammer, Paintbrush, Sparkles, Scissors, Wind, Clock } from 'lucide-react';
+import { ArrowLeft, Search, MapPin, ChevronDown, CheckCircle, Star, ArrowRight, Zap, Droplets, Wrench, Hammer, Paintbrush, Sparkles, Scissors, Wind, Clock, Bell, X } from 'lucide-react';
+
 import BottomNav from '../components/BottomNav';
 import ProviderCard from '../components/ProviderCard';
 import { useNavigate } from 'react-router-dom';
+import { useAppSelector } from '@/redux-toolkit/customHook/customHook';
 import { getHomeData } from '../service/userService';
 
 const iconMap = {
@@ -27,8 +29,13 @@ export default function Home() {
   const [homeData, setHomeData] = useState({
     ongoingBooking: null,
     categories: [],
-    topRatedProviders: []
+    topRatedProviders: [],
+    notifications: []
   });
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const userData = useAppSelector((state) => state?.user?.userData);
+
 
   useEffect(() => {
     fetchHomeData();
@@ -74,12 +81,24 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+             <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowNotifications(!showNotifications)}>
+                <Bell size={24} color="#64748b" />
+                {homeData.notifications?.length > 0 && (
+                   <span style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, background: '#ef4444', borderRadius: '50%', border: '2px solid white' }}></span>
+                )}
+             </div>
              <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', top: 0, right: 0, width: 8, height: 8, background: '#ef4444', borderRadius: '50%', border: '2px solid white' }}></div>
-                <img src="https://i.pravatar.cc/150?u=user" alt="user" className="avatar" style={{ width: 40, height: 40, cursor: 'pointer' }} onClick={() => navigate('/user-profile')} />
+                <img 
+                   src={userData?.profileImage || "https://api.dicebear.com/7.x/avataaars/svg?seed=user"} 
+                   alt="user" 
+                   className="avatar" 
+                   style={{ width: 40, height: 40, cursor: 'pointer', borderRadius: '50%', objectFit: 'cover', border: '1px solid #eef2ff' }} 
+                   onClick={() => navigate('/user-profile')} 
+                />
              </div>
           </div>
+
         </div>
 
         <div className="search-container" style={{ margin: 0 }}>
@@ -95,7 +114,30 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Notifications Modal */}
+      {showNotifications && (
+         <div style={{ position: 'fixed', top: 70, right: 20, width: '300px', background: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000, padding: '1rem', border: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
+               <h3 style={{ margin: 0, fontSize: '1rem' }}>Notifications</h3>
+               <button onClick={() => setShowNotifications(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={18}/></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
+               {homeData.notifications?.length === 0 ? (
+                  <p style={{ color: '#94a3b8', fontSize: '0.875rem', textAlign: 'center' }}>No new notifications</p>
+               ) : (
+                  homeData.notifications.map((n, i) => (
+                     <div key={i} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '10px', fontSize: '0.875rem' }}>
+                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{n.title}</div>
+                        <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{n.message}</div>
+                     </div>
+                  ))
+               )}
+            </div>
+         </div>
+      )}
+
       <div className="page-content" style={{ paddingBottom: '90px' }}>
+
         {/* Promotional Banners */}
         <div className="section" style={{ paddingTop: '1rem' }}>
           <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
@@ -177,18 +219,11 @@ export default function Home() {
           </div>
           <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'none' }}>
             {topRatedProviders.length > 0 ? topRatedProviders.map((provider, idx) => (
-              <div key={idx} style={{ flex: '0 0 auto', width: '260px' }}>
-                <ProviderCard provider={{
-                  id: provider._id,
-                  name: provider.businessName || provider.fullName,
-                  category: provider.category,
-                  rating: provider.rating,
-                  reviewsCount: provider.reviewsCount || 10,
-                  profileImage: provider.profileImage,
-                  distance: "1.2 km" // Placeholder for now
-                }} />
+              <div key={provider._id || idx} style={{ flex: '0 0 auto', width: '260px' }}>
+                <ProviderCard provider={provider} />
               </div>
             )) : (
+
                <div style={{ textAlign: 'center', width: '100%', color: '#94a3b8', padding: '2rem' }}>No experts available right now</div>
             )}
           </div>

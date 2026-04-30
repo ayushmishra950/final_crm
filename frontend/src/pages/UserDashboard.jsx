@@ -134,18 +134,10 @@ export default function UserDashboard() {
              </div>
           ) : (
             <div className="provider-list animate-fade-in">
-               {providers.map((provider, idx) => (
-                  <ProviderCard key={idx} provider={{
-                     id: provider._id,
-                     name: provider.businessName || provider.fullName,
-                     category: provider.category,
-                     rating: provider.rating,
-                     reviewsCount: provider.reviewsCount || 10,
-                     profileImage: provider.profileImage,
-                     verified: provider.isKycVerified,
-                     distance: "1.2 km"
-                  }} />
-               ))}
+                {providers.map((provider, idx) => (
+                   <ProviderCard key={provider._id || idx} provider={provider} />
+                ))}
+
                
                {providers.length === 0 && (
                   <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'white', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>

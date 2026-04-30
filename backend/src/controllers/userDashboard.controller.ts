@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/auth.middleware";
+import Review from "../models/review.model";
 import User from "../models/user.model";
 import Booking from "../models/booking.model";
 import Notification from "../models/notification.model";
@@ -250,15 +251,59 @@ export const getExploreProviders = async (req: AuthRequest, res: Response) => {
 export const getVendorProfile = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const vendor = await User.findById(id).select("-password -tokens -role");
+        const vendor = await User.findById(id).select("-password -refreshToken");
         if (!vendor) {
             return res.status(404).json({ success: false, message: "Vendor not found" });
         }
+
+        // Also fetch reviews for this vendor
+        const reviews = await Review.find({ vendorId: id })
+            .populate("userId", "fullName profileImage")
+            .sort({ createdAt: -1 });
+
         res.status(200).json({
             success: true,
-            vendor
+            vendor,
+            reviews
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const addReview = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user._id;
+        const { vendorId, rating, comment, bookingId } = req.body;
+
+        if (!vendorId || !rating) {
+            return res.status(400).json({ success: false, message: "Vendor ID and rating are required" });
+        }
+
+        const newReview = await Review.create({
+            userId,
+            vendorId,
+            rating,
+            comment,
+            bookingId: bookingId || new User()._id // Fallback if no booking ID (though normally should have one)
+        });
+
+        // Update vendor's average rating
+        const allReviews = await Review.find({ vendorId });
+        const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+        
+        await User.findByIdAndUpdate(vendorId, {
+            rating: parseFloat(avgRating.toFixed(1)),
+            reviewsCount: allReviews.length
+        });
+
+        res.status(201).json({
+            success: true,
+            message: "Review added successfully",
+            review: newReview
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+

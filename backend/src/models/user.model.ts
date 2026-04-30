@@ -32,8 +32,10 @@ export interface IUser extends Document {
     rating?: number;
     reviewsCount?: number;
     services?: string[];
+    portfolio?: string[];
     createdAt: Date;
     updatedAt: Date;
+
     comparePassword(password: string): Promise<boolean>;
 }
 
@@ -148,7 +150,13 @@ const UserSchema: Schema<IUser> = new Schema(
                 type: String,
             },
         ],
+        portfolio: [
+            {
+                type: String,
+            },
+        ],
     },
+
     {
         timestamps: true,
     }

@@ -1,6 +1,60 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import Booking from "../models/booking.model";
+import Notification from "../models/notification.model";
+import { emitToUser, getIO } from "../service/socketHelper";
+import mongoose from "mongoose";
+
+
+
+export const createBooking = async (req: AuthRequest, res: Response) => {
+    try {
+        const { vendorId, serviceId, date, totalAmount, location, note } = req.body;
+        const userId = req.user._id;
+
+        // Ensure serviceId is a valid ObjectId if provided
+        let validServiceId = null;
+        if (serviceId && mongoose.Types.ObjectId.isValid(serviceId)) {
+            validServiceId = serviceId;
+        }
+
+        const newBooking = await Booking.create({
+            userId,
+            vendorId,
+            serviceId: validServiceId,
+            date: date || new Date(),
+            totalAmount: totalAmount || 0,
+            location: location || "User Location"
+        });
+
+
+        const vendorMessage = `New booking request from ${req.user.fullName}`;
+
+        await Notification.create({
+            userId: vendorId,
+            title: "New Booking Request",
+            message: vendorMessage,
+            type: "booking"
+        });
+
+        emitToUser(vendorId.toString(), "new_booking", {
+            booking: newBooking,
+            message: vendorMessage
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Booking requested successfully",
+            booking: newBooking
+        });
+
+    } catch (error: any) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
 
 export const getVendorBookings = async (req: AuthRequest, res: Response) => {
     try {
@@ -25,7 +79,6 @@ export const getVendorBookings = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
-
 export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
@@ -39,58 +92,42 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
         );
 
         if (!booking) {
-            return res.status(404).json({ success: false, message: "Booking not found or unauthorized" });
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found or unauthorized"
+            });
         }
 
-        const { getIO } = require("../service/socketHelper");
-        getIO().emit("user_update", { message: "Booking status updated" });
-        getIO().emit("vendor_update", { message: "Booking status updated" });
+        const userMessage = `Your booking status has been updated to ${status}`;
 
-        res.status(200).json({
+        await Notification.create({
+            userId: booking.userId,
+            title: "Booking Update",
+            message: userMessage,
+            type: "booking"
+        });
+
+        emitToUser(booking.userId.toString(), "booking_update", {
+            bookingId: id,
+            status,
+            message: userMessage
+        });
+
+        return res.status(200).json({
             success: true,
             message: `Booking ${status} successfully`,
             booking
         });
+
     } catch (error: any) {
-        res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
-import { getIO } from "../service/socketHelper";
 
-export const createBooking = async (req: AuthRequest, res: Response) => {
-    try {
-        const userId = req.user._id;
-        const { vendorId, serviceId, date, totalAmount, location } = req.body;
-
-        const newBooking = await Booking.create({
-            userId,
-            vendorId,
-            serviceId,
-            date,
-            totalAmount: totalAmount || 0,
-            location: location || "TBD"
-        });
-
-        // Emit socket event to vendor
-        try {
-            const io = getIO();
-            io.emit(`new_booking_${vendorId}`, newBooking);
-            io.emit("vendor_update", { message: "New booking received" });
-            io.emit("user_update", { message: "Booking created" });
-        } catch (socketErr) {
-            console.error("Socket emission failed:", socketErr);
-        }
-
-        res.status(201).json({
-            success: true,
-            message: "Booking requested successfully",
-            booking: newBooking
-        });
-    } catch (error: any) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
 
 export const getUserBookings = async (req: AuthRequest, res: Response) => {
     try {

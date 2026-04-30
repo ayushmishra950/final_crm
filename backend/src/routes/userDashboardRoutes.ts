@@ -26,6 +26,9 @@ router.get("/payments", isAuthenticated, userDashboardController.getPaymentHisto
 // Security
 router.post("/change-password", isAuthenticated, userDashboardController.changePassword);
 
+// Review
+router.post("/review", isAuthenticated, userDashboardController.addReview);
+
 // Public/Explore
 router.get("/home", isAuthenticated, userDashboardController.getHomeData);
 router.get("/explore", isAuthenticated, userDashboardController.getExploreProviders);

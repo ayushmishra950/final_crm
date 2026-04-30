@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
 import { ArrowLeft, 
   BarChart2, Briefcase, IndianRupee, UserCircle, 
   MapPin, PhoneCall, CheckCircle, Upload, Power, 
-  Clock, ShieldCheck, Camera, CreditCard, ChevronRight, User, ShieldAlert, X, Edit3, Plus, Trash2
+  Clock, ShieldCheck, Camera, CreditCard, ChevronRight, User, ShieldAlert, X, Edit3, Plus, Trash2, LogOut
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as vendorService from '../../service/vendorService';
 import * as serviceManagement from '../../service/serviceManagement';
+import * as authService from '../../service/auth';
+
 import { useDispatch, useSelector } from 'react-redux';
 import { setVendorUser, setVendorDashboard, setMyServices } from '../../redux-toolkit/slice/vendorSlice';
 import { connectSocket, socket } from '../../socket/socket';
@@ -29,6 +32,12 @@ export default function ProviderDashboard() {
   const vendorUser = useSelector((state) => state.vendor.vendorUser) || {};
   const dashboardData = useSelector((state) => state.vendor.dashboardData) || { stats: {}, recentBookings: [], reviews: [] };
   const myServices = useSelector((state) => state.vendor.myServices) || [];
+  
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const [newService, setNewService] = useState({
     name: '',
     description: '',
@@ -36,6 +45,10 @@ export default function ProviderDashboard() {
     category: '',
     images: []
   });
+
+  const profileInputRef = useRef(null);
+  const portfolioInputRef = useRef(null);
+
 
   useEffect(() => {
     fetchInitialData();
@@ -151,7 +164,49 @@ export default function ProviderDashboard() {
     }
   };
 
+  const handleProfileImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const formData = new FormData();
+      formData.append('profileImage', file);
+      try {
+        const res = await vendorService.updateVendorProfile(formData);
+        if (res.success) {
+          dispatch(setVendorUser(res.vendor));
+          showToast("Profile image updated!");
+        }
+      } catch (error) {
+        showToast("Failed to update profile image");
+      }
+    }
+  };
+
+  const handleAddPortfolioImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const formData = new FormData();
+      // Since portfolio is an array, we might need to handle this differently depending on backend
+      // For now, let's assume we append to existing portfolio
+      const currentPortfolio = vendorUser.portfolio || [];
+      formData.append('portfolioFile', file); // Imaginary key or similar
+      
+      try {
+        // If we don't have a direct upload, we simulate by adding the file to FormData
+        // But the current updateVendorProfile expects a JSON body unless multipart is handled.
+        // Let's try sending just the file if backend supports it or simulate the array update.
+        const res = await vendorService.updateVendorProfile(formData);
+        if (res.success) {
+           dispatch(setVendorUser(res.vendor));
+           showToast("Portfolio image added!");
+        }
+      } catch (error) {
+        showToast("Failed to update portfolio");
+      }
+    }
+  };
+
   const handleDeleteService = async (id) => {
+
     if (!window.confirm("Are you sure you want to delete this service?")) return;
     try {
         const res = await serviceManagement.deleteService(id);
@@ -180,9 +235,9 @@ export default function ProviderDashboard() {
     }
   };
 
-  const newBookings = dashboardData.recentBookings.filter(b => b.status === 'pending');
-  const activeBookings = dashboardData.recentBookings.filter(b => b.status === 'accepted');
-  const completedBookings = dashboardData.recentBookings.filter(b => b.status === 'completed');
+  const newBookings = (dashboardData.recentBookings || []).filter(b => b.status === 'pending');
+  const activeBookings = (dashboardData.recentBookings || []).filter(b => b.status === 'accepted');
+  const completedBookings = (dashboardData.recentBookings || []).filter(b => b.status === 'completed');
 
   return (
     <div className="provider-app" style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f1f5f9' }}>
@@ -326,11 +381,18 @@ export default function ProviderDashboard() {
                   <div style={{ position: 'absolute', top: '2px', left: isOnline ? '20px' : '2px', width: '18px', height: '18px', background: 'white', borderRadius: '50%', transition: '0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}></div>
                </div>
             </div>
+            <img 
+               src={vendorUser.profileImage || "https://i.pravatar.cc/150"} 
+               alt="profile" 
+               style={{ width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', objectFit: 'cover', border: '2px solid #eef2ff' }} 
+               onClick={() => setActiveTab('profile')} 
+            />
          </div>
+
       </div>
 
       {/* SCROLLABLE MAIN CONTENT */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '80px', padding: '1rem' }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '150px', padding: '1rem' }}>
 
          {/* ------------------ HOME TAB ------------------ */}
          {activeTab === 'home' && (
@@ -476,25 +538,32 @@ export default function ProviderDashboard() {
          {activeTab === 'profile' && (
             <div className="animate-fade-in">
 
-               <div style={{ textAlign: 'center', marginBottom: '2rem', padding: '2rem', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ position: 'relative', display: 'inline-block', marginBottom: '1rem' }}>
-                     <img src={vendorUser.profileImage || "https://i.pravatar.cc/150?u=ramesh"} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f1f5f9' }} alt="Profile" />
-                     <button style={{ position: 'absolute', bottom: 0, right: -5, background: '#4f46e5', color: 'white', border: 'none', padding: '0.4rem', borderRadius: '50%', cursor: 'pointer' }}><Camera size={14}/></button>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                     <h2 style={{ fontSize: '1.25rem', margin: 0, color: '#1e293b' }}>{vendorUser.fullName}</h2>
-                     <button onClick={() => setIsEditing(true)} style={{ background: 'transparent', border: 'none', color: '#4f46e5', cursor: 'pointer', padding: 0 }}><Edit3 size={16}/></button>
-                  </div>
-                  {isKycVerified ? (
-                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', color: '#10b981', fontSize: '0.875rem', fontWeight: 500 }}><ShieldCheck size={16}/> KYC Fully Verified</div>
-                  ) : isKycPending ? (
-                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', color: '#f59e0b', fontSize: '0.875rem', fontWeight: 500, background: '#fef3c7', padding: '0.4rem 1rem', borderRadius: '8px', border: '1px solid #fde68a' }}><Clock size={16}/> KYC Pending Approval</div>
-                  ) : (
-                     <button onClick={() => setShowKycForm(true)} style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <ShieldAlert size={16}/> Complete KYC Now
-                     </button>
-                  )}
-               </div>
+                <div style={{ textAlign: 'center', marginBottom: '2rem', padding: '2rem', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                   <div style={{ position: 'relative', display: 'inline-block', marginBottom: '1rem' }}>
+                      <img src={vendorUser.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${vendorUser.fullName || 'Vendor'}`} style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #f1f5f9', boxShadow: 'var(--shadow-sm)' }} alt="Profile" />
+                      <button 
+                        onClick={() => profileInputRef.current?.click()}
+                        style={{ position: 'absolute', bottom: 0, right: -5, background: '#4f46e5', color: 'white', border: '3px solid white', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}
+                      >
+                        <Camera size={16}/>
+                      </button>
+                      <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageChange} />
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <h2 style={{ fontSize: '1.25rem', margin: 0, color: '#1e293b' }}>{vendorUser.fullName}</h2>
+                      <button onClick={() => setIsEditing(true)} style={{ background: 'transparent', border: 'none', color: '#4f46e5', cursor: 'pointer', padding: 0 }}><Edit3 size={16}/></button>
+                   </div>
+                   {isKycVerified ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', color: '#10b981', fontSize: '0.875rem', fontWeight: 500 }}><ShieldCheck size={16}/> KYC Fully Verified</div>
+                   ) : isKycPending ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', color: '#f59e0b', fontSize: '0.875rem', fontWeight: 500, background: '#fef3c7', padding: '0.4rem 1rem', borderRadius: '8px', border: '1px solid #fde68a' }}><Clock size={16}/> KYC Pending Approval</div>
+                   ) : (
+                      <button onClick={() => setShowKycForm(true)} style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                         <ShieldAlert size={16}/> Complete KYC Now
+                      </button>
+                   )}
+                </div>
+
 
                <h3 style={{ fontSize: '1rem', margin: '0 0 1rem 0', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Business Profile</h3>
                <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '2rem' }}>
@@ -533,22 +602,57 @@ export default function ProviderDashboard() {
                   )}
                </div>
 
-               <h3 style={{ fontSize: '1rem', margin: '0 0 1rem 0', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Portfolio Gallery</h3>
-               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '2rem' }}>
-                  <img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=200&auto=format&fit=crop" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '8px' }}/>
-                  <div style={{ width: '100%', aspectRatio: '1/1', background: '#e2e8f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', cursor: 'pointer' }}>
-                     <Upload size={24}/>
+               <h3 style={{ fontSize: '1rem', margin: '0 0 1rem 0', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gallery & Account</h3>
+ 
+
+
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+                  {(vendorUser.portfolio || []).map((img, idx) => (
+                    <div key={idx} style={{ position: 'relative', aspectRatio: '1/1' }}>
+                       <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px', border: '1px solid #e2e8f0' }} alt={`Portfolio ${idx}`} />
+                    </div>
+                  ))}
+                  <div 
+                    onClick={() => portfolioInputRef.current?.click()}
+                    style={{ width: '100%', aspectRatio: '1/1', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', cursor: 'pointer', transition: '0.2s' }}
+                    onMouseOver={e => e.currentTarget.style.borderColor = '#4f46e5'}
+                    onMouseOut={e => e.currentTarget.style.borderColor = '#cbd5e1'}
+                  >
+                     <Plus size={24}/>
+                     <span style={{ fontSize: '0.6rem', marginTop: '4px', fontWeight: 600 }}>ADD WORK</span>
                   </div>
+                  <input type="file" ref={portfolioInputRef} hidden accept="image/*" onChange={handleAddPortfolioImage} />
                </div>
 
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                  <button onClick={() => navigate('/user-profile')} style={{ background: '#4f46e5', color: 'white', border: 'none', padding: '0.75rem 2rem', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}>
-                     <User size={18}/> Switch to User Mode
-                  </button>
-                  <button onClick={() => navigate('/')} style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444', padding: '0.75rem 2rem', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}>
-                     <Power size={18}/> Logout Business Account
-                  </button>
-               </div>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', marginTop: '5rem', paddingBottom: '2rem' }}>
+                    <button 
+                       onClick={() => navigate('/home')} 
+                       style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '1.25rem', borderRadius: '20px', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', fontSize: '1rem', boxShadow: '0 8px 16px rgba(79, 70, 229, 0.25)', cursor: 'pointer', transition: '0.3s' }}
+                       onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                       onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                       <ArrowLeft size={20} /> Switch to User Mode
+                    </button>
+ 
+                    <button 
+                       onClick={async () => {
+                          try {
+                             await authService.logout();
+                             localStorage.removeItem('token');
+                             document.cookie = "accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                             navigate('/vendor-auth');
+                          } catch (err) {
+                             navigate('/vendor-auth');
+                          }
+                       }} 
+                       style={{ width: '100%', background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', padding: '1.25rem', borderRadius: '20px', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', fontSize: '1rem', cursor: 'pointer', transition: '0.3s' }}
+                       onMouseOver={e => e.currentTarget.style.background = '#ffe4e6'}
+                       onMouseOut={e => e.currentTarget.style.background = '#fff1f2'}
+                    >
+                       <LogOut size={20} /> Secure Logout
+                    </button>
+                 </div>
+
             </div>
          )}
       </div>

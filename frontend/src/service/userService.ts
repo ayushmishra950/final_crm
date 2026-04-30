@@ -109,6 +109,16 @@ export const createBooking = async (bookingData: any) => {
     }
 };
 
+export const submitReview = async (reviewData: any) => {
+    try {
+        const response = await api.post("/user-dashboard/review", reviewData);
+        return response.data;
+    } catch (error: any) {
+        throw error.response?.data || error.message;
+    }
+};
+
+
 export const getVendorProfile = async (id: string) => {
     try {
         const response = await api.get(`/user-dashboard/vendor/${id}`);

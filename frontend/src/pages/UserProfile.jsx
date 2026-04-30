@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Edit3, MapPin, CreditCard, HelpCircle, FileText, LogOut, ChevronRight, Wallet, CheckCircle, Clock, Briefcase, X } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+
+import { ArrowLeft, Edit3, MapPin, CreditCard, HelpCircle, FileText, LogOut, ChevronRight, Wallet, CheckCircle, Clock, Briefcase, X, Camera } from 'lucide-react';
+
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import { updateProfile } from '../service/auth';
@@ -19,6 +21,8 @@ export default function UserProfile() {
    const [showSettings, setShowSettings] = useState(false);
    const [showPasswordModal, setShowPasswordModal] = useState(false);
    const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '' });
+   const fileInputRef = useRef(null);
+
 
    const dashboardData = useAppSelector((state) => state?.user?.dashboardData) || {
       stats: { totalBookings: 0, pendingBookings: 0, completedBookings: 0 },
@@ -112,10 +116,8 @@ export default function UserProfile() {
                </button>
                <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1e293b' }}>Account & Details</h1>
             </div>
-            <button className="btn-icon" onClick={() => { setEditFormData(user || {}); setIsEditing(true); }} style={{ background: '#f1f5f9', border: 'none', color: '#4f46e5', cursor: 'pointer' }}>
-               <Edit3 size={18} />
-            </button>
          </div>
+
 
          {isEditing && (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
@@ -148,17 +150,57 @@ export default function UserProfile() {
 
          <div className="page-content" style={{ overflowY: 'auto', paddingBottom: '90px' }}>
 
-            {/* Profile Card Widget */}
-            <div style={{ background: 'white', padding: '2rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-               <div style={{ position: 'relative', marginBottom: '1rem' }}>
-                  <img src="https://i.pravatar.cc/150?img=11" style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '4px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} alt="User Avatar" />
-                  <div style={{ position: 'absolute', bottom: '0', right: '0', background: '#10b981', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>
-                     <CheckCircle size={10} color="white" />
+            <div style={{ background: 'white', padding: '2.5rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+               
+               <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
+                  {/* Profile Image with Change Option */}
+                  <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
+                     <img src={user?.profileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.fullName || 'User'}`} style={{ width: '110px', height: '110px', borderRadius: '50%', objectFit: 'cover', border: '5px solid white', boxShadow: 'var(--shadow-md)' }} alt="User Avatar" />
+                     <div style={{ position: 'absolute', bottom: '5px', right: '5px', background: '#4f46e5', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid white', color: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 5 }}>
+                        <Camera size={14} />
+                     </div>
+                     <input 
+                        type="file" 
+                        ref={fileInputRef}
+                        hidden 
+                        accept="image/*"
+                        onChange={async (e) => {
+                           const file = e.target.files?.[0];
+                           if (file) {
+                              const formData = new FormData();
+                              formData.append('profileImage', file);
+                              try {
+                                 const res = await updateProfile(formData);
+                                 if (res.status === 200) {
+                                    dispatch(setUserData(res.data.user));
+                                 }
+                              } catch (err) { console.log(err); }
+                           }
+                        }}
+                     />
                   </div>
+
+
+                  {/* Edit Profile Icon moved here */}
+                  <button 
+                     onClick={() => { setEditFormData(user || {}); setIsEditing(true); }}
+                     style={{ position: 'absolute', top: '-10px', right: '-40px', background: '#f1f5f9', border: 'none', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', boxShadow: 'var(--shadow-sm)', cursor: 'pointer', transition: 'transform 0.2s' }}
+                     onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                     onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                     <Edit3 size={18} />
+                  </button>
                </div>
-               <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.5rem', fontWeight: 600, color: '#1e293b' }}>{user?.fullName}</h2>
-               <div style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 500 }}>{user?.mobile} • {user?.email}</div>
+
+               <div style={{ textAlign: 'center' }}>
+                  <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                     {user?.fullName}
+                     <CheckCircle size={18} color="#10b981" fill="#dcfce7" />
+                  </h2>
+                  <div style={{ color: '#64748b', fontSize: '0.95rem', fontWeight: 500 }}>{user?.mobile} • {user?.email}</div>
+               </div>
             </div>
+
 
             <div className="section" style={{ paddingTop: '1.5rem' }}>
 
