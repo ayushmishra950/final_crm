@@ -14,6 +14,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setVendorUser, setVendorDashboard, setMyServices } from '../../redux-toolkit/slice/vendorSlice';
 import { connectSocket, socket } from '../../socket/socket';
 import { getCategories } from '../../service/categoryService';
+import ReviewsSection from '../../components/ReviewsSection';
+ 
 
 export default function ProviderDashboard() {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ export default function ProviderDashboard() {
   const [loading, setLoading] = useState(true);
   const [showCompletionAlert, setShowCompletionAlert] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [vendorReviews, setVendorReviews] = useState([]);
 
   const dispatch = useDispatch();
   const vendorUser = useSelector((state) => state.vendor.vendorUser) || {};
@@ -53,13 +56,35 @@ export default function ProviderDashboard() {
   useEffect(() => {
     fetchInitialData();
 
-    socket.on('vendor_update', () => {
-      console.log("Socket: Vendor update received, refreshing data...");
-      fetchInitialData();
+    socket.on('vendor_update', (data) => {
+      console.log("Socket: Vendor update received, refreshing data...", data);
+      if (data?.type === 'new_review') {
+        // Add new review to the top of the list
+        setVendorReviews(prev => [data.review, ...prev]);
+      } else if (data?.type === 'review_updated') {
+        // Update the review in the list
+        setVendorReviews(prev => prev.map(r => r._id === data.review._id ? data.review : r));
+      } else if (data?.type === 'review_deleted') {
+        // Remove the review from the list
+        setVendorReviews(prev => prev.filter(r => r._id !== data.reviewId));
+      } else {
+        fetchInitialData();
+      }
+    });
+
+    // Listen for KYC approval
+    socket.on('verification_update', (data) => {
+      console.log("Socket: KYC verification update received", data);
+      if (data?.isKycVerified) {
+        setIsKycVerified(true);
+        dispatch(setVendorUser({ ...vendorUser, isKycVerified: true }));
+        showToast(data.message || "KYC Verified Successfully!");
+      }
     });
 
     return () => {
       socket.off('vendor_update');
+      socket.off('verification_update');
     };
   }, []);
 
@@ -78,6 +103,10 @@ export default function ProviderDashboard() {
         setIsOnline(dashRes.data.vendor.isOnline);
         setIsKycVerified(dashRes.data.vendor.isKycVerified);
         connectSocket(dashRes.data.vendor._id); // Connect socket using vendor ID
+        // Set reviews from dashboard data
+        if (dashRes.data.reviews) {
+          setVendorReviews(dashRes.data.reviews);
+        }
       }
 
       if (servicesRes.success) {
@@ -220,7 +249,11 @@ export default function ProviderDashboard() {
   };
 
   const handleUpdateBooking = async (id, status) => {
-    if (!checkProfileCompletion()) return;
+    // Only check KYC verification for booking actions, not full profile completion
+    if (!isKycVerified) {
+      setShowCompletionAlert(true);
+      return;
+    }
     try {
         const res = await vendorService.updateBookingStatus(id, status);
         if (res.success) {
@@ -263,36 +296,74 @@ export default function ProviderDashboard() {
 
       {isEditing && (
          <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
-               <button onClick={() => setIsEditing(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24}/></button>
-               <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Edit Profile</h2>
+            <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '420px', maxHeight: '90vh', borderRadius: '24px', padding: '0', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+               {/* Header */}
+               <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>Edit Profile</h2>
+                  <button onClick={() => setIsEditing(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', transition: '0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#e2e8f0'} onMouseOut={e => e.currentTarget.style.background = '#f1f5f9'}>
+                     <X size={20}/>
+                  </button>
+               </div>
 
-               <form onSubmit={handleUpdateProfile}>
-                  <div className="input-group" style={{ marginBottom: '1rem' }}>
-                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Partner Name</label>
-                     <input type="text" className="input-field" value={vendorUser.fullName || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, fullName: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
-                  </div>
-                  <div className="input-group" style={{ marginBottom: '1rem' }}>
-                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Business Name</label>
-                     <input type="text" className="input-field" value={vendorUser.businessName || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, businessName: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
-                  </div>
-                  <div className="input-group" style={{ marginBottom: '1rem' }}>
-                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Mobile Number</label>
-                     <input type="tel" className="input-field" value={vendorUser.mobile || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, mobile: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
-                  </div>
-                  <div className="input-group" style={{ marginBottom: '1.5rem' }}>
-                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Primary Service Category</label>
-                     <select className="input-field" value={vendorUser.category || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, category: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px' }} required>
-                        <option value="">Select Category</option>
-                        {categories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
-                     </select>
-                  </div>
-                  <div className="input-group" style={{ marginBottom: '1.5rem' }}>
-                     <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '0.5rem' }}>About Business</label>
-                     <textarea className="input-field" value={vendorUser.about || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, about: e.target.value}))} style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '80px', resize: 'vertical' }} required />
-                  </div>
-                  <button type="submit" style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}>Save Changes</button>
-               </form>
+               {/* Scrollable Form Content */}
+               <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem' }}>
+                  <form onSubmit={handleUpdateProfile}>
+                     {/* Row 1: Partner Name */}
+                     <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Partner Name</label>
+                        <input type="text" className="input-field" value={vendorUser.fullName || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, fullName: e.target.value}))} placeholder="Enter your full name" style={{ width: '100%', padding: '0.625rem 0.875rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9375rem', color: '#1e293b', transition: '0.2s' }} required />
+                     </div>
+
+                     {/* Row 2: Business Name & Mobile (side by side) */}
+                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '1rem' }}>
+                        <div>
+                           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Business Name</label>
+                           <input type="text" className="input-field" value={vendorUser.businessName || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, businessName: e.target.value}))} placeholder="Your business" style={{ width: '100%', padding: '0.625rem 0.875rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9375rem', color: '#1e293b', transition: '0.2s' }} />
+                        </div>
+                        <div>
+                           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mobile Number</label>
+                           <input type="tel" className="input-field" value={vendorUser.mobile || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, mobile: e.target.value}))} placeholder="Phone number" style={{ width: '100%', padding: '0.625rem 0.875rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9375rem', color: '#1e293b', transition: '0.2s' }} required />
+                        </div>
+                     </div>
+
+                     {/* Row 3: Category & Experience (side by side) */}
+                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', marginBottom: '1rem' }}>
+                        <div>
+                           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Category</label>
+                           <select className="input-field" value={vendorUser.category || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, category: e.target.value}))} style={{ width: '100%', padding: '0.625rem 0.875rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9375rem', color: '#1e293b', cursor: 'pointer', transition: '0.2s' }} required>
+                              <option value="">Select</option>
+                              {categories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
+                           </select>
+                        </div>
+                        <div>
+                           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Experience (Yrs)</label>
+                           <input type="number" className="input-field" value={vendorUser.experience || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, experience: parseInt(e.target.value) || 0 }))} placeholder="0" min="0" max="50" style={{ width: '100%', padding: '0.625rem 0.875rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9375rem', color: '#1e293b', transition: '0.2s' }} />
+                        </div>
+                     </div>
+
+                     {/* Row 4: Distance */}
+                     <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Service Distance (Km)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                           <input type="range" className="input-field" value={vendorUser.distance || 10} onChange={(e) => dispatch(setVendorUser({...vendorUser, distance: parseInt(e.target.value) }))} min="1" max="100" style={{ flex: 1, accentColor: '#4f46e5', cursor: 'pointer' }} />
+                           <span style={{ minWidth: '48px', textAlign: 'center', fontWeight: 600, color: '#4f46e5', background: '#eef2ff', padding: '0.375rem 0.5rem', borderRadius: '8px', fontSize: '0.875rem' }}>{vendorUser.distance || 10} km</span>
+                        </div>
+                     </div>
+
+                     {/* Row 5: About Business */}
+                     <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.375rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>About Business</label>
+                        <textarea className="input-field" value={vendorUser.about || ''} onChange={(e) => dispatch(setVendorUser({...vendorUser, about: e.target.value}))} placeholder="Tell customers about your business..." style={{ width: '100%', padding: '0.625rem 0.875rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.875rem', color: '#1e293b', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }} required />
+                     </div>
+                  </form>
+               </div>
+
+               {/* Footer with Submit Button */}
+               <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0 0 24px 24px' }}>
+                  <button type="submit" onClick={handleUpdateProfile} style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '0.875rem', borderRadius: '12px', fontWeight: 600, fontSize: '0.9375rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)', transition: '0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                     Save Changes
+                  </button>
+               </div>
             </div>
          </div>
       )}
@@ -572,8 +643,12 @@ export default function ProviderDashboard() {
                      <div style={{ color: '#1e293b', fontWeight: 500 }}>{vendorUser.category || "Not Specified"}</div>
                   </div>
                   <div style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Operating Radius</label>
-                     <div style={{ color: '#1e293b', fontWeight: 500 }}>Within {vendorUser.operatingRadius} Km</div>
+                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Experience</label>
+                     <div style={{ color: '#1e293b', fontWeight: 500 }}>{vendorUser.experience ? `${vendorUser.experience} Years` : "Not Specified"}</div>
+                  </div>
+                  <div style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+                     <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Service Distance</label>
+                     <div style={{ color: '#1e293b', fontWeight: 500 }}>{vendorUser.distance ? `Within ${vendorUser.distance} Km` : "Not Specified"}</div>
                   </div>
                   <div style={{ padding: '1rem' }}>
                      <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>About Business</label>
@@ -582,24 +657,12 @@ export default function ProviderDashboard() {
                </div>
 
 
-               <h3 style={{ fontSize: '1rem', margin: '0 0 1rem 0', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recent Reviews</h3>
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                  {dashboardData.reviews.length === 0 ? (
-                      <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No reviews yet.</div>
-                  ) : (
-                    dashboardData.reviews.map(review => (
-                        <div key={review._id} style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                              <img src={review.userId?.profileImage} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-                              <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{review.userId?.fullName}</div>
-                              <div style={{ marginLeft: 'auto', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                 <BarChart2 size={14}/> {review.rating}/5
-                              </div>
-                           </div>
-                           <div style={{ color: '#64748b', fontSize: '0.875rem' }}>{review.comment}</div>
-                        </div>
-                    ))
-                  )}
+               <h3 style={{ fontSize: '1rem', margin: '0 0 1rem 0', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Customer Reviews ({vendorReviews.length})</h3>
+               <div style={{ marginBottom: '2rem' }}>
+                  <ReviewsSection 
+                     reviews={vendorReviews} 
+                     variant="vendor"
+                  />
                </div>
 
                <h3 style={{ fontSize: '1rem', margin: '0 0 1rem 0', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gallery & Account</h3>

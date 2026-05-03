@@ -297,10 +297,110 @@ export const addReview = async (req: AuthRequest, res: Response) => {
             reviewsCount: allReviews.length
         });
 
+        // Emit socket event for real-time update
+        const { getIO } = require("../service/socketHelper");
+        const io = getIO();
+        io.to(vendorId.toString()).emit('vendor_update', { type: 'new_review', review: newReview });
+
         res.status(201).json({
             success: true,
             message: "Review added successfully",
             review: newReview
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Get reviews given by the current user
+export const getUserGivenReviews = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user._id;
+        
+        const reviews = await Review.find({ userId })
+            .populate("vendorId", "fullName businessName category profileImage")
+            .populate("bookingId", "serviceId date")
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            reviews
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Update a review (only by the user who created it)
+export const updateReview = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user._id;
+        const { id } = req.params;
+        const { rating, comment } = req.body;
+
+        const review = await Review.findOne({ _id: id, userId });
+        if (!review) {
+            return res.status(404).json({ success: false, message: "Review not found or unauthorized" });
+        }
+
+        review.rating = rating || review.rating;
+        review.comment = comment !== undefined ? comment : review.comment;
+        await review.save();
+
+        // Recalculate vendor's average rating
+        const allReviews = await Review.find({ vendorId: review.vendorId });
+        const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+        
+        await User.findByIdAndUpdate(review.vendorId, {
+            rating: parseFloat(avgRating.toFixed(1)),
+            reviewsCount: allReviews.length
+        });
+
+        // Emit socket event for real-time update
+        const { getIO } = require("../service/socketHelper");
+        const io = getIO();
+        io.to(review.vendorId.toString()).emit('vendor_update', { type: 'review_updated', review });
+
+        res.status(200).json({
+            success: true,
+            message: "Review updated successfully",
+            review
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Delete a review (only by the user who created it)
+export const deleteReview = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user._id;
+        const { id } = req.params;
+
+        const review = await Review.findOneAndDelete({ _id: id, userId });
+        if (!review) {
+            return res.status(404).json({ success: false, message: "Review not found or unauthorized" });
+        }
+
+        // Recalculate vendor's average rating
+        const allReviews = await Review.find({ vendorId: review.vendorId });
+        const avgRating = allReviews.length > 0 
+            ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length 
+            : 0;
+        
+        await User.findByIdAndUpdate(review.vendorId, {
+            rating: parseFloat(avgRating.toFixed(1)),
+            reviewsCount: allReviews.length
+        });
+
+        // Emit socket event for real-time update
+        const { getIO } = require("../service/socketHelper");
+        const io = getIO();
+        io.to(review.vendorId.toString()).emit('vendor_update', { type: 'review_deleted', reviewId: id });
+
+        res.status(200).json({
+            success: true,
+            message: "Review deleted successfully"
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

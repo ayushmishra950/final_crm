@@ -16,7 +16,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setAdminStats, setAdminProviders, setAdminUsers, setAdminReviews, setAdminData, setAdminActivity } from '../../redux-toolkit/slice/adminSlice';
 
 import { setCategoryList } from '../../redux-toolkit/slice/categorySlice';
-import { connectSocket, socket } from '../../socket/socket';
+import { connectSocket, connectAdminSocket, socket } from '../../socket/socket';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell
@@ -53,13 +53,51 @@ export default function AdminDashboard() {
 
    useEffect(() => {
       fetchDashboardData();
+      connectAdminSocket();
 
       socket.on('admin_update', () => {
          fetchDashboardData();
       });
 
+      // Listen for new user registration
+      socket.on('new_user_registered', (data) => {
+         if (data?.user) {
+            dispatch(setAdminUsers([data.user, ...users]));
+            // Update stats
+            dispatch(setAdminStats({
+               ...stats,
+               totalUsers: stats.totalUsers + 1
+            }));
+         }
+      });
+
+      // Listen for new vendor registration
+      socket.on('new_vendor_registered', (data) => {
+         if (data?.user) {
+            dispatch(setAdminProviders([data.user, ...providers]));
+            // Update stats
+            dispatch(setAdminStats({
+               ...stats,
+               totalProviders: stats.totalProviders + 1
+            }));
+         }
+      });
+
+      // Listen for KYC approval (updates pending KYC count)
+      socket.on('kyc_approved', (data) => {
+         if (data?.vendorId) {
+            // Update the vendor in the providers list
+            dispatch(setAdminProviders(providers.map(p => 
+               p._id === data.vendorId ? { ...p, isKycVerified: true } : p
+            )));
+         }
+      });
+
       return () => {
          socket.off('admin_update');
+         socket.off('new_user_registered');
+         socket.off('new_vendor_registered');
+         socket.off('kyc_approved');
       };
    }, []);
 
@@ -264,7 +302,7 @@ export default function AdminDashboard() {
                   {/* ---------------- OVERVIEW ---------------- */}
                   {activeTab === 'dashboard' && (
                      <div className="animate-fade-in">
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
                            <div className="admin-card">
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                                  <div style={{ width: 48, height: 48, background: '#eef2ff', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5' }}><Users size={24}/></div>
@@ -346,19 +384,28 @@ export default function AdminDashboard() {
                               <button className="admin-btn admin-btn-outline" style={{ background: '#f8fafc' }}><Filter size={16}/> Filter</button>
                            </div>
 
-                           <div style={{ overflowX: 'auto' }}>
-                              <table className="admin-table">
-                                 <thead>
-                                    <tr>
-                                       <th>User</th>
-                                       <th>Email & Contact</th>
-                                       <th>Joined Date</th>
-                                       <th>Status</th>
-                                       <th style={{ textAlign: 'right' }}>Actions</th>
-                                    </tr>
-                                 </thead>
-                                 <tbody>
-                                    {filteredUsers.map(u => (
+                            <div style={{ overflowX: 'auto' }}>
+                               {filteredUsers.length === 0 ? (
+                                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8' }}>
+                                     <div style={{ width: '64px', height: '64px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}><Users size={32} color="#cbd5e1"/></div>
+                                     <p style={{ fontSize: '1rem', fontWeight: 500, marginBottom: '0.25rem' }}>No users found</p>
+                                     <p style={{ fontSize: '0.875rem' }}>
+                                        {searchQuery ? 'Try a different search term' : 'Users will appear here once they register'}
+                                     </p>
+                                  </div>
+                               ) : (
+                               <table className="admin-table">
+                                  <thead>
+                                     <tr>
+                                        <th>User</th>
+                                        <th>Email & Contact</th>
+                                        <th>Joined Date</th>
+                                        <th>Status</th>
+                                        <th style={{ textAlign: 'right' }}>Actions</th>
+                                     </tr>
+                                  </thead>
+                                  <tbody>
+                                     {filteredUsers.map(u => (
                                        <tr key={u._id}>
                                           <td>
                                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -378,20 +425,30 @@ export default function AdminDashboard() {
                                                 <button style={{ width: 32, height: 32, borderRadius: '8px', border: 'none', background: '#f8fafc', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><MoreVertical size={16}/></button>
                                              </div>
                                           </td>
-                                       </tr>
-                                    ))}
-                                 </tbody>
-                              </table>
-                           </div>
-                        </div>
-                     </div>
-                  )}
+                                        </tr>
+                                     ))}
+                                  </tbody>
+                               </table>
+                               )}
+                            </div>
+                         </div>
+                      </div>
+                   )}
 
-                  {/* ---------------- PROVIDERS ---------------- */}
-                  {activeTab === 'providers' && (
-                     <div className="animate-fade-in">
-                        <div style={{ display: 'grid', gap: '1rem' }}>
-                           {filteredProviders.map(p => (
+                   {/* ---------------- PROVIDERS ---------------- */}
+                   {activeTab === 'providers' && (
+                      <div className="animate-fade-in">
+                         {filteredProviders.length === 0 ? (
+                            <div className="admin-card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                               <div style={{ width: '64px', height: '64px', background: '#fff7ed', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}><Briefcase size={32} color="#fdba74"/></div>
+                               <p style={{ fontSize: '1rem', fontWeight: 500, marginBottom: '0.25rem', color: '#1e293b' }}>No providers found</p>
+                               <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                  {searchQuery ? 'Try a different search term' : 'Service providers will appear here once they register'}
+                               </p>
+                            </div>
+                         ) : (
+                         <div style={{ display: 'grid', gap: '1rem' }}>
+                            {filteredProviders.map(p => (
                               <div key={p._id} className="admin-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem' }}>
                                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                     <div style={{ position: 'relative' }}>
@@ -417,6 +474,7 @@ export default function AdminDashboard() {
                               </div>
                            ))}
                         </div>
+                        )}
                      </div>
                   )}
 
@@ -427,9 +485,16 @@ export default function AdminDashboard() {
                            <h3 style={{ margin: 0 }}>Category Management</h3>
                            <button onClick={() => { setSelectedCategory(null); setCategoryForm({ name: '', image: '', description: '' }); setCategoryModalOpen(true); }} style={{ background: '#4f46e5', color: 'white', border: 'none', padding: '0.6rem 1.25rem', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}><Plus size={18}/> Add New</button>
                         </div>
-                        <div className="admin-card" style={{ padding: 0, overflow: 'hidden' }}>
-                           <table className="admin-table" style={{ margin: 0 }}>
-                              <thead style={{ background: '#f8fafc' }}>
+                         {categories.length === 0 ? (
+                            <div className="admin-card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                               <div style={{ width: '64px', height: '64px', background: '#f0fdf4', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}><Grid size={32} color="#86efac"/></div>
+                               <p style={{ fontSize: '1rem', fontWeight: 500, marginBottom: '0.25rem', color: '#1e293b' }}>No categories found</p>
+                               <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Create your first category to organize services</p>
+                            </div>
+                         ) : (
+                         <div className="admin-card" style={{ padding: 0, overflow: 'hidden' }}>
+                            <table className="admin-table" style={{ margin: 0 }}>
+                               <thead style={{ background: '#f8fafc' }}>
                                  <tr>
                                     <th style={{ paddingLeft: '1.5rem' }}>Preview</th>
                                     <th>Name</th>
@@ -454,6 +519,7 @@ export default function AdminDashboard() {
                               </tbody>
                            </table>
                         </div>
+                        )}
                      </div>
                   )}
 

@@ -20,6 +20,8 @@ export interface IUser extends Document {
     businessName?: string;
     category?: string;
     operatingRadius?: number;
+    distance?: number;
+    experience?: number;
     about?: string;
     isOnline?: boolean;
     isKycVerified?: boolean;
@@ -89,7 +91,7 @@ const UserSchema: Schema<IUser> = new Schema(
 
         profileImage: {
             type: String,
-            default: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
+            default: "https://imgs.search.brave.com/-nmL2r-34z2gUm6XJlNfbOjPtyV5CoEaX0wj5HLDLU4/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9tZWRp/YS5pc3RvY2twaG90/by5jb20vaWQvMTQ2/NTE3MzQ2NC9waG90/by9idXNpbmVzcy1u/ZXR3b3JrLWNvbmNl/cHQtdGVhbXdvcmst/cGFydG5lcnNoaXAt/aHVtYW4tcmVzb3Vy/Y2VzLmpwZz9zPTYx/Mng2MTImdz0wJms9/MjAmYz1wZjJPVE50/Um9FMzBaNnlrU2Rm/WE9PcmxxejZjTXdV/d0pSN2lWODg1azdJ/PQ",
         },
 
         address: {
@@ -111,6 +113,18 @@ const UserSchema: Schema<IUser> = new Schema(
         operatingRadius: {
             type: Number,
             default: 10,
+        },
+
+        distance: {
+            type: Number,
+            default: 10,
+            min: 0,
+        },
+
+        experience: {
+            type: Number,
+            default: 0,
+            min: 0,
         },
 
         about: {

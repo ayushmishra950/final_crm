@@ -322,4 +322,27 @@ new updatesss=============>
     but har month ka seprate hona chahiye y upar card m total 1 year ka data teeno ka show hona chahiye 
     or niche graph m proper teeno ka data har month wise show karna hai tumhe?
 
-    
+
+
+
+updated completed=========>
+
+
+
+
+
+7. user , vendor , admin teeno k dashboard m jo bhi form hai jin par submit button use ho rhe hai un par loading lagana hai 
+   abhi nhi laga hua hai isliye?
+
+8. jab admin vedor section m kisi vendor ki kyc check karke accept karta hai to vendor k page par turant update nhi show hota hai or
+   na hi uske pass notification jata hai or na hi user k page or search par vo vendor turant show hota hai 
+   refresh karne par sab sahi show hone lagta hai to is problem ko socket s handle karna hai orsahi karna hai  ?
+
+9. is pure project m ek main problem y hai ki ki khi par bhi socket use nhi ho rha hai ya agar use ho bhi rha hai 
+   to proper call nhi ho rha hai mujhe refresh karne par pata chal rha hai ?
+
+
+11. vendor ko book karne k liye uske call ya whatsapp s handle k baad jo booking ka option show ho rha hai
+    uske click par koi boking nhi ho rhi hai na hi koi response show ho rha hai ise sahi karna hai?
+
+12. 

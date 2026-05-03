@@ -37,8 +37,14 @@ export default function UserAuth() {
 
       console.log(res);
       if (res.status === 201 || res.status === 200) {
-        addToast(isLogin ? "Login Successful" : "Registration Successful", "Welcome to BharatSeva!", "success");
-        navigate('/user-dashboard');
+        if (isLogin) {
+          addToast("Login Successful", "Welcome to BharatSeva!", "success");
+          navigate('/user-dashboard');
+        } else {
+          addToast("Registration Successful", "Please login to continue.", "success");
+          setIsLogin(true); // Switch to login form
+          setFormData({ fullName: '', email: '', password: '', mobile: '' }); // Clear form
+        }
       }
     }
     catch (err) {

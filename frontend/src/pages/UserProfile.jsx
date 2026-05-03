@@ -9,7 +9,8 @@ import { setUserData, setUserDashboard, setFullHistory, setPayments, setFavorite
 import { connectSocket } from '../socket/socket';
 import { useAppDispatch, useAppSelector } from '@/redux-toolkit/customHook/customHook';
 import * as userService from '../service/userService';
-import { Bell, Heart, Settings, Shield, IndianRupee, History } from 'lucide-react';
+import { Bell, Heart, Settings, Shield, IndianRupee, History, Star } from 'lucide-react';
+import ReviewsSection from '../components/ReviewsSection';
 
 export default function UserProfile() {
    const navigate = useNavigate();
@@ -20,6 +21,8 @@ export default function UserProfile() {
    const [showFavorites, setShowFavorites] = useState(false);
    const [showSettings, setShowSettings] = useState(false);
    const [showPasswordModal, setShowPasswordModal] = useState(false);
+   const [showReviews, setShowReviews] = useState(false);
+   const [myReviews, setMyReviews] = useState([]);
    const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '' });
    const fileInputRef = useRef(null);
 
@@ -87,6 +90,21 @@ export default function UserProfile() {
          if (res.success) dispatch(setFavorites(res.favorites));
       } catch (error) { console.log(error); }
    }
+
+   const fetchMyReviews = async () => {
+      try {
+         const res = await userService.getUserGivenReviews();
+         if (res.success) setMyReviews(res.reviews);
+      } catch (error) { console.log(error); }
+   }
+
+   const handleReviewUpdate = (updatedReview, deletedReviewId) => {
+      if (deletedReviewId) {
+         setMyReviews(myReviews.filter(r => r._id !== deletedReviewId));
+      } else if (updatedReview) {
+         setMyReviews(myReviews.map(r => r._id === updatedReview._id ? updatedReview : r));
+      }
+   };
 
    const handleChangePassword = async (e) => {
       e.preventDefault();
@@ -284,14 +302,21 @@ export default function UserProfile() {
                      </div>
                      <ChevronRight size={18} color="#cbd5e1" />
                   </div>
-                  <div onClick={() => setShowSettings(true)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
-                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#334155', fontWeight: 500 }}>
-                        <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><Settings size={18} /></div>
-                        Notification Preferences
-                     </div>
-                     <ChevronRight size={18} color="#cbd5e1" />
-                  </div>
-               </div>
+                   <div onClick={() => setShowSettings(true)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#334155', fontWeight: 500 }}>
+                         <div style={{ background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', color: '#64748b' }}><Settings size={18} /></div>
+                         Notification Preferences
+                      </div>
+                      <ChevronRight size={18} color="#cbd5e1" />
+                   </div>
+                   <div onClick={() => { fetchMyReviews(); setShowReviews(true); }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f8fafc'} onMouseOut={e => e.currentTarget.style.background = 'white'}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#334155', fontWeight: 500 }}>
+                         <div style={{ background: '#fef3c7', padding: '0.5rem', borderRadius: '8px', color: '#d97706' }}><Star size={18} /></div>
+                         My Reviews
+                      </div>
+                      <ChevronRight size={18} color="#cbd5e1" />
+                   </div>
+                </div>
 
                {/* Switch Mode Action */}
                <button onClick={() => navigate('/provider-dashboard')} style={{ width: '100%', background: '#4f46e5', color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '1rem' }}>
@@ -389,24 +414,44 @@ export default function UserProfile() {
             </div>
          )}
 
-         {showSettings && (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-               <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
-                  <button onClick={() => setShowSettings(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Notifications</h2>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                     {['Email Notifications', 'Push Notifications', 'SMS Updates'].map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                           <span style={{ color: '#334155' }}>{item}</span>
-                           <div style={{ width: '40px', height: '22px', background: '#10b981', borderRadius: '20px', position: 'relative', cursor: 'pointer' }}>
-                              <div style={{ position: 'absolute', top: '2px', left: '20px', width: '18px', height: '18px', background: 'white', borderRadius: '50%' }}></div>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-               </div>
-            </div>
-         )}
-      </div>
-   );
-}
+          {showSettings && (
+             <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem 1.5rem', position: 'relative' }}>
+                   <button onClick={() => setShowSettings(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+                   <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1e293b', marginBottom: '1.5rem' }}>Notifications</h2>
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {['Email Notifications', 'Push Notifications', 'SMS Updates'].map((item, idx) => (
+                         <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#334155' }}>{item}</span>
+                            <div style={{ width: '40px', height: '22px', background: '#10b981', borderRadius: '20px', position: 'relative', cursor: 'pointer' }}>
+                               <div style={{ position: 'absolute', top: '2px', left: '20px', width: '18px', height: '18px', background: 'white', borderRadius: '50%' }}></div>
+                            </div>
+                         </div>
+                      ))}
+                   </div>
+                </div>
+             </div>
+          )}
+
+          {showReviews && (
+             <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                <div className="animate-fade-in" style={{ background: 'white', width: '100%', maxWidth: '500px', maxHeight: '90vh', borderRadius: '24px', padding: '0', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                   <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>My Reviews</h2>
+                      <button onClick={() => setShowReviews(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}>
+                         <X size={20} />
+                      </button>
+                   </div>
+                   <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem' }}>
+                      <ReviewsSection 
+                         reviews={myReviews} 
+                         variant="user" 
+                         onReviewUpdate={handleReviewUpdate}
+                      />
+                   </div>
+                </div>
+             </div>
+          )}
+       </div>
+    );
+ }

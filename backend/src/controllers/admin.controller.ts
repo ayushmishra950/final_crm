@@ -6,7 +6,7 @@ import Review from "../models/review.model";
 import Admin from "../models/admin.model";
 import jwt from "jsonwebtoken";
 import Notification from "../models/notification.model";
-import { emitToUser } from "../service/socketHelper";
+import { emitToUser, emitToAdmin } from "../service/socketHelper";
 
 
 
@@ -96,10 +96,16 @@ export const verifyVendorKyc = async (req: Request, res: Response) => {
             type: "system"
         });
 
-        // Emit Socket
+        // Emit Socket to vendor
         emitToUser(id, "verification_update", {
             isKycVerified: true,
             message
+        });
+
+        // Emit Socket to admin dashboard to update pending KYC count
+        emitToAdmin("kyc_approved", {
+            vendorId: id,
+            vendor
         });
 
         res.status(200).json({ success: true, message: "Vendor KYC verified successfully", vendor });

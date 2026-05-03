@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft, Star, MapPin, CheckCircle,
-  Phone, MessageCircle, Clock, Shield, Calendar,
-  ShieldAlert, User, Zap, X
-} from 'lucide-react';
-
+import { ArrowLeft, Star, MapPin, CheckCircle, Phone, MessageCircle, Clock, Shield, Calendar, ShieldAlert, User, Zap, X} from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux-toolkit/customHook/customHook';
 import * as userService from '../service/userService';
 
@@ -20,6 +15,8 @@ export default function ProviderProfile() {
   const [loading, setLoading] = useState(true);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookingNote, setBookingNote] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [creatingBooking, setCreatingBooking] = useState(false);
 
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector((state) => state?.user?.userData);
@@ -47,6 +44,7 @@ export default function ProviderProfile() {
 
   const handleSubmitReview = async () => {
     if (rating === 0) return;
+    setSubmittingReview(true);
     try {
       const res = await userService.submitReview({
         vendorId: id,
@@ -63,6 +61,8 @@ export default function ProviderProfile() {
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -104,6 +104,7 @@ export default function ProviderProfile() {
   }
 
   const provider = providerData;
+  console.log("Provider Data:", provider);
 
   return (
     <div className="page-content" style={{ background: 'var(--bg-color)', minHeight: '100vh', paddingBottom: '100px' }}>
@@ -168,7 +169,7 @@ export default function ProviderProfile() {
                 <div className="text-sub" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Service Area</div>
              </div>
              <div className="text-center">
-                <div style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: '1.125rem' }}>1.2 km</div>
+                <div style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: '1.125rem' }}>{provider?.distance || 0} km</div>
                 <div className="text-sub" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Distance</div>
              </div>
           </div>
@@ -252,7 +253,9 @@ export default function ProviderProfile() {
                     value={review}
                     onChange={(e) => setReview(e.target.value)}
                  />
-                 <button className="btn btn-primary btn-block" style={{ padding: '1rem' }} onClick={handleSubmitReview} disabled={rating === 0}>Post Public Review</button>
+                  <button className="btn btn-primary btn-block" style={{ padding: '1rem' }} onClick={handleSubmitReview} disabled={rating === 0 || submittingReview}>
+                    {submittingReview ? 'Posting...' : 'Post Public Review'}
+                  </button>
               </div>
            </div>
         </div>
@@ -296,29 +299,36 @@ export default function ProviderProfile() {
                   />
                </div>
 
-               <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn btn-primary btn-block" style={{ height: '56px', borderRadius: '18px', fontSize: '1.125rem' }} onClick={async () => {
-                     try {
-                        const res = await userService.createBooking({
-                           vendorId: provider._id || provider.id,
-                           serviceId: provider.services?.[0],
-                           date: new Date(),
-                           location: "Current Location",
-                           note: bookingNote
-                        });
-                        if (res.success) {
-                           alert("Booking Request Sent Successfully!");
-                           setShowBookingModal(false);
-                           setBookingNote('');
-                           navigate('/notifications');
-                        }
-                     } catch (e) {
-                        alert("Failed to send booking: " + e.message);
-                     }
-                  }}>
-                     Confirm Request
-                  </button>
-               </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                   <button className="btn btn-primary btn-block" style={{ height: '56px', borderRadius: '18px', fontSize: '1.125rem' }} onClick={async () => {
+                      if (!bookingNote.trim()) {
+                         alert("Please describe your requirements");
+                         return;
+                      }
+                      setCreatingBooking(true);
+                      try {
+                         const res = await userService.createBooking({
+                            vendorId: provider._id || provider.id,
+                            serviceId: provider.services?.[0],
+                            date: new Date(),
+                            location: "Current Location",
+                            note: bookingNote
+                         });
+                         if (res.success) {
+                            alert("Booking Request Sent Successfully!");
+                            setShowBookingModal(false);
+                            setBookingNote('');
+                            navigate('/user-dashboard');
+                         }
+                      } catch (e) {
+                         alert("Failed to send booking: " + (e.message || "Unknown error"));
+                      } finally {
+                         setCreatingBooking(false);
+                      }
+                   }} disabled={creatingBooking}>
+                      {creatingBooking ? 'Sending Request...' : 'Confirm Request'}
+                   </button>
+                </div>
                <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', marginTop: '1.5rem' }}>No payment required now. You can discuss pricing via call.</p>
             </div>
          </div>
@@ -326,4 +336,4 @@ export default function ProviderProfile() {
 
     </div>
   );
-}
+}

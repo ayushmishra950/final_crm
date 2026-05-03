@@ -28,6 +28,9 @@ router.post("/change-password", isAuthenticated, userDashboardController.changeP
 
 // Review
 router.post("/review", isAuthenticated, userDashboardController.addReview);
+router.get("/reviews/given", isAuthenticated, userDashboardController.getUserGivenReviews);
+router.put("/review/:id", isAuthenticated, userDashboardController.updateReview);
+router.delete("/review/:id", isAuthenticated, userDashboardController.deleteReview);
 
 // Public/Explore
 router.get("/home", isAuthenticated, userDashboardController.getHomeData);

@@ -10,6 +10,11 @@ export const initSocket = (io: Server) => {
             console.log(`User ${socket.id} joined room ${userId}`);
         });
 
+        socket.on("join_admin_room", () => {
+            socket.join("admin");
+            console.log(`Admin ${socket.id} joined admin room`);
+        });
+
         socket.on("disconnect", () => {
             console.log("User disconnected:", socket.id);
         });
@@ -29,4 +34,10 @@ export const emitToUser = (userId: string, event: string, data: any) => {
     if (ioInstance) {
         ioInstance.to(userId.toString()).emit(event, data);
     }
-};
+};
+
+export const emitToAdmin = (event: string, data: any) => {
+    if (ioInstance) {
+        ioInstance.to("admin").emit(event, data);
+    }
+};

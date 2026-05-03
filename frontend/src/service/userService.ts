@@ -118,6 +118,32 @@ export const submitReview = async (reviewData: any) => {
     }
 };
 
+export const getUserGivenReviews = async () => {
+    try {
+        const response = await api.get("/user-dashboard/reviews/given");
+        return response.data;
+    } catch (error: any) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const updateReview = async (id: string, reviewData: { rating?: number; comment?: string }) => {
+    try {
+        const response = await api.put(`/user-dashboard/review/${id}`, reviewData);
+        return response.data;
+    } catch (error: any) {
+        throw error.response?.data || error.message;
+    }
+};
+
+export const deleteReview = async (id: string) => {
+    try {
+        const response = await api.delete(`/user-dashboard/review/${id}`);
+        return response.data;
+    } catch (error: any) {
+        throw error.response?.data || error.message;
+    }
+};
 
 export const getVendorProfile = async (id: string) => {
     try {

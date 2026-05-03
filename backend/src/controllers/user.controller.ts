@@ -2,6 +2,7 @@ import User from "../models/user.model";
 import type { Request, Response } from "express";
 import { generateAccessAndRefreshTokens } from "../utils/generateTokens";
 import jwt from "jsonwebtoken";
+import { emitToAdmin } from "../service/socketHelper";
 
 const cookieOptions = {
     httpOnly: true,
@@ -21,6 +22,19 @@ export const registerUser = async (req: Request, res: Response) => {
 
         const user = await User.create({ fullName, email, password, mobile, role: "user" });
         const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id.toString());
+
+        // Emit socket event to admin about new user registration
+        emitToAdmin("new_user_registered", {
+            type: "new_user",
+            user: {
+                _id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                mobile: user.mobile,
+                role: user.role,
+                createdAt: user.createdAt
+            }
+        });
 
         res.status(201)
             .cookie("accessToken", accessToken, { ...cookieOptions, maxAge: 10 * 60 * 1000 })
@@ -72,6 +86,19 @@ export const registerVendor = async (req: Request, res: Response) => {
 
         const user = await User.create({ fullName, email, password, mobile, role: "vendor" });
         const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id.toString());
+
+        // Emit socket event to admin about new vendor registration
+        emitToAdmin("new_vendor_registered", {
+            type: "new_vendor",
+            user: {
+                _id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                mobile: user.mobile,
+                role: user.role,
+                createdAt: user.createdAt
+            }
+        });
 
         res.status(201)
             .cookie("accessToken", accessToken, { ...cookieOptions, maxAge: 10 * 60 * 1000 })

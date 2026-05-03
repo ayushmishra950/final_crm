@@ -9,7 +9,6 @@ export default function VendorAuth() {
   const { addToast } = useCustomToast();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const [step, setStep] = useState('input'); // input | success
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -38,11 +37,14 @@ export default function VendorAuth() {
 
       console.log(res);
       if (res.status === 201 || res.status === 200) {
-        addToast(isLogin ? "Login Successful" : "Registration Successful", "Welcome to BharatSeva Partner!", "success");
-        setStep('success');
-        setTimeout(() => {
+        if (isLogin) {
+          addToast("Login Successful", "Welcome to BharatSeva Partner!", "success");
           navigate('/provider-dashboard');
-        }, 2000);
+        } else {
+          addToast("Registration Successful", "Please login to continue.", "success");
+          setIsLogin(true); // Switch to login form
+          setFormData({ fullName: '', email: '', password: '', mobile: '' }); // Clear form
+        }
       }
     }
     catch (err) {
@@ -65,14 +67,7 @@ export default function VendorAuth() {
         <span className="badge badge-warning" style={{ marginLeft: 'auto' }}>Service Partner</span>
       </div>
 
-      {step === 'success' ? (
-        <div className="section animate-fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-          <CheckCircle size={80} color="var(--success-color)" style={{ marginBottom: '1.5rem' }} />
-          <h1 className="text-h1">Registration Setup!</h1>
-          <p className="text-sub text-center" style={{ maxWidth: '300px' }}>Your service provider account is created. Forwarding to dashboard...</p>
-        </div>
-      ) : (
-        <div className="section animate-fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div className="section animate-fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <Briefcase size={40} color="var(--warning-color)" style={{ marginBottom: '1rem' }} />
             <h1 className="text-h1" style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>
@@ -83,8 +78,7 @@ export default function VendorAuth() {
             </p>
           </div>
 
-          {step === 'input' && (
-            <form onSubmit={handleAuth}>
+          <form onSubmit={handleAuth}>
               {!isLogin && (
                 <div className="input-group">
                   <label className="text-sub" style={{ fontWeight: 'var(--font-medium)', color: 'var(--text-main)' }}>Your Name</label>
@@ -159,10 +153,7 @@ export default function VendorAuth() {
                 <div style={{ flex: 1, borderBottom: '1px solid #e2e8f0' }}></div>
               </div>
 
-              <button type="button" onClick={() => {
-                setStep('success');
-                setTimeout(() => navigate('/provider-dashboard'), 2000);
-              }} style={{ width: '100%', padding: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', fontWeight: 600, color: '#1e293b', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: 'pointer' }}>
+              <button type="button" onClick={() => window.location.href = "http://localhost:5000/auth/google"} style={{ width: '100%', padding: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', fontWeight: 600, color: '#1e293b', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: 'pointer' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -171,19 +162,15 @@ export default function VendorAuth() {
                 </svg>
                 Continue with Google
               </button>
-            </form>
-          )}
+          </form>
 
-          {step === 'input' && (
-            <div className="text-center" style={{ marginTop: '2rem', padding: '1rem', background: 'var(--primary-light)', borderRadius: 'var(--radius-lg)' }}>
+          <div className="text-center" style={{ marginTop: '2rem', padding: '1rem', background: 'var(--primary-light)', borderRadius: 'var(--radius-lg)' }}>
               <div className="text-sub" style={{ marginBottom: '0.5rem' }}>{isLogin ? "New service provider?" : 'Already registered your business?'}</div>
               <button type="button" className="btn btn-outline btn-block" onClick={() => setIsLogin(!isLogin)} style={{ borderColor: 'var(--primary-color)' }}>
                 {isLogin ? 'Become a Partner' : 'Login Here'}
               </button>
             </div>
-          )}
         </div>
-      )}
     </div>
   );
 }

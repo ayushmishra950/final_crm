@@ -52,7 +52,7 @@ export const getVendorDashboardData = async (req: AuthRequest, res: Response) =>
 export const updateVendorProfile = async (req: AuthRequest, res: Response) => {
     try {
         const vendorId = req.user._id;
-        const { fullName, businessName, category, mobile, about, operatingRadius, address, portfolio, profileImage } = req.body;
+        const { fullName, businessName, category, mobile, about, operatingRadius, distance, experience, address, portfolio, profileImage } = req.body;
 
         const updatedVendor = await User.findByIdAndUpdate(
             vendorId,
@@ -63,6 +63,8 @@ export const updateVendorProfile = async (req: AuthRequest, res: Response) => {
                 mobile,
                 about,
                 operatingRadius,
+                distance,
+                experience,
                 address,
                 portfolio,
                 profileImage
